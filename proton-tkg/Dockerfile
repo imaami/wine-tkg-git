@@ -35,19 +35,21 @@ RUN set -ex; \
 
 RUN set -ex; \
 	apt-get update; \
-	apt-get -y --install-recommends install wine-devel-amd64 wine-staging-amd64; \
+	apt-get -y --install-recommends install wine-devel wine-staging; \
 	apt-get clean; \
 	rm -rf /var/lib/apt/lists/*
 
 RUN set -ex; \
+	apt-get update; \
 	mkdir -p /build; \
 	cd /build; \
-	git clone -b docker-wip --depth=1 --single-branch https://github.com/imaami/wine-tkg-git.git
+	git clone -b docker-wip --depth=1 --single-branch https://github.com/imaami/wine-tkg-git.git; \
+	cd wine-tkg-git/proton-tkg; \
+	./proton-tkg.sh
 
 ## What to install for the 32-bit build:
 #RUN set -ex; \
 #	apt-get update; \
-#	apt-get -y --install-recommends install wine-devel wine-staging; \
 #	apt-get -y --no-install-recommends install xserver-xorg-dev:i386 libfreetype6-dev:i386 libfontconfig1-dev:i386 libglu1-mesa-dev:i386 \
 #	        libosmesa6-dev:i386 libvulkan-dev:i386 libvulkan1:i386 libpulse-dev:i386 libopenal-dev:i386 libncurses-dev:i386 libfaudio0:i386 \
 #	        libfaudio-dev:i386 libvkd3d-dev:i386 libgnutls28-dev:i386 libtiff-dev:i386 libldap-dev:i386 libcapi20-dev:i386 libpcap-dev:i386 \
