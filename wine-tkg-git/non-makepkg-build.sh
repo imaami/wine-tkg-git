@@ -289,4 +289,4 @@ else
   build_wine_tkg
 fi
 
-#trap _exit_cleanup EXIT
+trap _exit_cleanup EXIT
