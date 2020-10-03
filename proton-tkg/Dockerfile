@@ -25,7 +25,7 @@ RUN set -ex; \
 	        gcc-multilib g++-multilib curl fonttools libsdl2-dev python3-tk libvulkan1 libkdb5-9 libppl14 libcolord2 libvulkan-dev \
 	        libgnutls28-dev libgstreamer-plugins-base1.0-dev libgstreamer1.0-dev libpng-dev libkadm5clnt-mit11 libkadm5srv-mit11 \
 	        libavcodec-dev libavutil-dev libswresample-dev libavcodec58 libswresample3 libavutil56 libfaudio0 libfaudio-dev libvkd3d-dev \
-	        libxinerama-dev libxcursor-dev libxrandr-dev libxcomposite-dev mingw-w64 meson; \
+	        libxinerama-dev libxcursor-dev libxrandr-dev libxcomposite-dev mingw-w64 meson glslang-tools; \
 	apt-get clean; \
 	rm -rf /var/lib/apt/lists/*
 
