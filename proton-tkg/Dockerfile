@@ -1,6 +1,7 @@
 FROM debian:unstable
 
 RUN set -ex; \
+	sed -Ei 's/^#[[:blank:]]*(.+history-search-.+)$/\1/' /etc/inputrc; \
 	sed -Ei 's/(debian unstable main)$/\1 non-free contrib/' /etc/apt/sources.list; \
 	apt-get update; \
 	apt-get -y upgrade; \
