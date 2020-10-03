@@ -52,7 +52,8 @@ else
   elif [ -e "$HOME/.steam/steam.sh" ]; then # typical on Ubuntu
     _steampath="$HOME/.steam"
   else
-    read -rp "Your Steam install wasn't found! Do you want to continue anyway? N/y: " _no_steampath;
+    #read -rp "Your Steam install wasn't found! Do you want to continue anyway? N/y: " _no_steampath;
+    _no_steampath=y
     if [ "$_no_steampath" != "y" ]; then
       exit
     fi
@@ -477,6 +478,8 @@ else
     echo -e "######\nmingw-w64 gcc found\n######"
   fi
 
+  echo "Checking for \"$_proton_pkgdest/../HL3_confirmed\""
+
   # Copy the resulting package in here to begin our work
   if [ -e "$_proton_pkgdest"/../HL3_confirmed ]; then
 
@@ -771,5 +774,6 @@ else
   else
     rm "$_nowhere"/proton_tkg_token
     echo "The required initial proton_dist build is missing! Wine-tkg-git compilation may have failed."
+    echo "(_proton_pkgdest=\"$_proton_pkgdest\")"
   fi
 fi
