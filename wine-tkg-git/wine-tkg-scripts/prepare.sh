@@ -2119,4 +2119,4 @@ _makedirs() {
 }
 
 # Workaround
-trap _exit_cleanup EXIT
+#trap _exit_cleanup EXIT
