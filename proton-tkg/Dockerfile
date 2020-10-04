@@ -1,7 +1,6 @@
 FROM debian:unstable
 
 RUN set -ex; \
-	sed -Ei 's/^#[[:blank:]]*(.+history-search-.+)$/\1/' /etc/inputrc; \
 	sed -Ei 's/(debian unstable main)$/\1 non-free contrib/' /etc/apt/sources.list; \
 	apt-get update; \
 	apt-get -y upgrade; \
@@ -26,6 +25,7 @@ RUN set -ex; \
 	        libgnutls28-dev libgstreamer-plugins-base1.0-dev libgstreamer1.0-dev libpng-dev libkadm5clnt-mit11 libkadm5srv-mit11 \
 	        libavcodec-dev libavutil-dev libswresample-dev libavcodec58 libswresample3 libavutil56 libfaudio0 libfaudio-dev libvkd3d-dev \
 	        libxinerama-dev libxcursor-dev libxrandr-dev libxcomposite-dev mingw-w64 meson glslang-tools; \
+	sed -Ei 's/^#[[:blank:]]*(.+history-search-.+)$/\1/' /etc/inputrc; \
 	update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix; \
 	update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix; \
 	update-alternatives --set i686-w64-mingw32-gcc /usr/bin/i686-w64-mingw32-gcc-posix; \
