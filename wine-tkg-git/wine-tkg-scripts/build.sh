@@ -228,7 +228,6 @@ _package_nomakepkg() {
 	else
 	  pkgdir="${_nomakepkg_prefix_path}/${_nomakepkg_pkgname}"
 	fi
-	msg2 "pkgdir=\"$pkgdir\""
 
 	if [ "$_GENERATE_DEBIAN_PACKAGE" = "true" ] && [ "$_EXTERNAL_INSTALL_TYPE" != "proton" ]; then
 		_generate_debian_package "$_prefix"
@@ -260,7 +259,6 @@ _package_nomakepkg() {
 	  msg2 "### Remember to use $_prefix/bin/wine instead of just wine (same for winecfg etc.)"
 	elif [ "$_EXTERNAL_INSTALL" = "true" ] && [ "$_EXTERNAL_INSTALL_TYPE" = "proton" ]; then
 	  touch "${pkgdir}"/../HL3_confirmed
-	  msg2 "touch \"${pkgdir}/../HL3_confirmed\""
 	fi
 }
 
