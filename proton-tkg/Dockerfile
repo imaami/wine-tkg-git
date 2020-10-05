@@ -15,7 +15,7 @@ ENV LANG en_US.UTF-8
 RUN set -ex; \
 	apt-get update; \
 	apt-get -y --no-install-recommends install libc6-dev linux-libc-dev libreadline-dev ca-certificates patch git wget gnupg less \
-	        fakeroot build-essential nano autoconf bison ccache debhelper desktop-file-utils docbook-to-man docbook-utils \
+	        fakeroot build-essential nano autoconf bison debhelper desktop-file-utils docbook-to-man docbook-utils \
 	        docbook-xsl flex fontforge gawk gettext libacl1-dev libasound2-dev libcapi20-dev libcups2-dev libdbus-1-dev \
 	        libgif-dev libglu1-mesa-dev libgphoto2-dev libgsm1-dev libgtk-3-dev libkrb5-dev liblcms2-dev libldap2-dev \
 	        libmpg123-dev libncurses5-dev libopenal-dev libosmesa6-dev libpcap-dev libpulse-dev libsane-dev libssl-dev \
@@ -24,7 +24,7 @@ RUN set -ex; \
 	        gcc-multilib g++-multilib curl fonttools libsdl2-dev python3-tk libvulkan1 libkdb5-9 libppl14 libcolord2 libvulkan-dev \
 	        libgnutls28-dev libgstreamer-plugins-base1.0-dev libgstreamer1.0-dev libpng-dev libkadm5clnt-mit11 libkadm5srv-mit11 \
 	        libavcodec-dev libavutil-dev libswresample-dev libavcodec58 libswresample3 libavutil56 libfaudio0 libfaudio-dev libvkd3d-dev \
-	        libxinerama-dev libxcursor-dev libxrandr-dev libxcomposite-dev mingw-w64 meson glslang-tools; \
+	        libxinerama-dev libxcursor-dev libxrandr-dev libxcomposite-dev mingw-w64 meson glslang-tools libgcrypt20 libgcrypt20-dev; \
 	sed -Ei 's/^#[[:blank:]]*(.+history-search-.+)$/\1/' /etc/inputrc; \
 	update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix; \
 	update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix; \
