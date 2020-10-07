@@ -6,7 +6,6 @@ RUN set -ex; \
 	apt-get -y upgrade; \
 	apt-get -y dist-upgrade; \
 	apt-get -y --no-install-recommends install locales; \
-	apt-get clean; \
 	rm -rf /var/lib/apt/lists/*; \
 	localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
 
@@ -14,8 +13,8 @@ ENV LANG en_US.UTF-8
 
 RUN set -ex; \
 	apt-get update; \
-	apt-get -y --no-install-recommends install libc6-dev linux-libc-dev libreadline-dev ca-certificates patch git wget gnupg less \
-	        fakeroot build-essential nano autoconf bison debhelper desktop-file-utils docbook-to-man docbook-utils \
+	apt-get -y --no-install-recommends install libc6-dev linux-libc-dev libnss3-dev libreadline-dev ca-certificates patch git wget \
+	        gnupg less fakeroot build-essential nano autoconf bison debhelper desktop-file-utils docbook-to-man docbook-utils \
 	        docbook-xsl flex fontforge gawk gettext libacl1-dev libasound2-dev libcapi20-dev libcups2-dev libdbus-1-dev \
 	        libgif-dev libglu1-mesa-dev libgphoto2-dev libgsm1-dev libgtk-3-dev libkrb5-dev liblcms2-dev libldap2-dev \
 	        libmpg123-dev libncurses5-dev libopenal-dev libosmesa6-dev libpcap-dev libpulse-dev libsane-dev libssl-dev \
@@ -30,39 +29,22 @@ RUN set -ex; \
 	update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix; \
 	update-alternatives --set i686-w64-mingw32-gcc /usr/bin/i686-w64-mingw32-gcc-posix; \
 	update-alternatives --set i686-w64-mingw32-g++ /usr/bin/i686-w64-mingw32-g++-posix; \
-	apt-get clean; \
-	rm -rf /var/lib/apt/lists/*
-
-RUN set -ex; \
 	dpkg --add-architecture i386; \
 	wget -O- https://dl.winehq.org/wine-builds/winehq.key | apt-key add -; \
-	echo 'deb http://dl.winehq.org/wine-builds/debian bullseye main' > /etc/apt/sources.list.d/winehq.list
-
-RUN set -ex; \
+	echo 'deb http://dl.winehq.org/wine-builds/debian bullseye main' > /etc/apt/sources.list.d/winehq.list; \
+	echo 'deb-src http://dl.winehq.org/wine-builds/debian bullseye main' >> /etc/apt/sources.list.d/winehq.list; \
 	apt-get update; \
 	apt-get -y --install-recommends install wine-devel wine-staging; \
-	apt-get clean; \
-	rm -rf /var/lib/apt/lists/*
-
-RUN set -ex; \
-	apt-get update; \
+	apt-get -y build-dep --only-source wine-staging/bullseye wine/bullseye; \
 	mkdir -p /build; \
 	cd /build; \
 	git clone -b docker-wip --depth=1 --single-branch https://github.com/imaami/wine-tkg-git.git; \
-	cd wine-tkg-git/proton-tkg; \
-	./proton-tkg.sh
+	rm -rf /var/lib/apt/lists/*
 
-## What to install for the 32-bit build:
-#RUN set -ex; \
-#	apt-get update; \
-#	apt-get -y --no-install-recommends install xserver-xorg-dev:i386 libfreetype6-dev:i386 libfontconfig1-dev:i386 libglu1-mesa-dev:i386 \
-#	        libosmesa6-dev:i386 libvulkan-dev:i386 libvulkan1:i386 libpulse-dev:i386 libopenal-dev:i386 libncurses-dev:i386 libfaudio0:i386 \
-#	        libfaudio-dev:i386 libvkd3d-dev:i386 libgnutls28-dev:i386 libtiff-dev:i386 libldap-dev:i386 libcapi20-dev:i386 libpcap-dev:i386 \
-#	        libxml2-dev:i386 libmpg123-dev:i386 libgphoto2-dev:i386 libsane-dev:i386 libcupsimage2-dev:i386 libkrb5-dev:i386 libgsm1-dev:i386 \
-#	        libxslt1-dev:i386 libv4l-dev:i386 libgstreamer-plugins-base1.0-dev:i386 libudev-dev:i386 libxi-dev:i386 liblcms2-dev:i386 \
-#	        libibus-1.0-dev:i386 libsdl2-dev:i386 ocl-icd-opencl-dev:i386 libxinerama-dev:i386 libxcursor-dev:i386 libxrandr-dev:i386 \
-#	        libxcomposite-dev:i386 libavcodec58:i386 libswresample3:i386 libavutil56:i386; \
-#	apt-get clean; \
-#	rm -rf /var/lib/apt/lists/*
+RUN set -ex; \
+	apt-get update; \
+	cd /build/wine-tkg-git/proton-tkg; \
+	./proton-tkg.sh; \
+	rm -rf /var/lib/apt/lists/*
 
 CMD ["/bin/bash"]
