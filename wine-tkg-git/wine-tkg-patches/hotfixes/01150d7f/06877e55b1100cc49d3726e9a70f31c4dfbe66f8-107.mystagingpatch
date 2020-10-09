@@ -1,6 +1,6 @@
-From 75fe86d0e228449c187f8e5a4d928618a49e9e2a Mon Sep 17 00:00:00 2001
+From ae7f011c92492dc121b1231555f151d57f8dc885 Mon Sep 17 00:00:00 2001
 From: Tk-Glitch <ti3nou@gmail.com>
-Date: Sat, 3 Oct 2020 18:01:25 +0200
+Date: Fri, 9 Oct 2020 13:02:55 +0200
 Subject: [PATCH 1/1] 01-staging-hotfixes
 
 ---
@@ -38,7 +38,7 @@ Subject: [PATCH 1/1] 01-staging-hotfixes
  ...port-for-multiple-parent-directories.patch |   51 +-
  .../0021-mf-Introduce-handler-helper.patch    |    5 +-
  ...-async-fileio-structures-if-possible.patch |   28 +-
- .../0001-ntdll-Add-dummy-apiset-to-PEB.patch  |   32 +-
+ .../0001-ntdll-Add-dummy-apiset-to-PEB.patch  |   36 +-
  patches/ntdll-ApiSetMap/definition            |    2 +-
  ...0001-ntdll-Fix-holes-in-ELF-mappings.patch |   32 +-
  ...-versions-of-RtlEnterCriticalSection.patch |   18 +-
@@ -165,7 +165,7 @@ Subject: [PATCH 1/1] 01-staging-hotfixes
  ...SystemExtendedHandleInformation-in-N.patch |  166 +--
  ...ObjectTypesInformation-in-NtQueryObj.patch |  211 ++--
  ...server-Register-types-during-startup.patch |   10 +-
- ...dex-for-ObjectTypeInformation-in-NtQ.patch |   53 +-
+ ...dex-for-ObjectTypeInformation-in-NtQ.patch |   55 +-
  ...-type-for-System-Extended-HandleInfo.patch |   76 +-
  ...ct-type-behavior-for-different-windo.patch |  147 ++-
  patches/server-Object_Types/definition        |    3 +-
@@ -200,9 +200,10 @@ Subject: [PATCH 1/1] 01-staging-hotfixes
  ...ub-implementation-of-Wow64Transition.patch |   44 +-
  patches/wow64cpu-Wow64Transition/definition   |    1 +
  .../0001-wpcap-Load-libpcap-dynamically.patch |   47 +-
+ ...-returning-the-proper-time-with-SO_C.patch |   39 +-
  patches/ws2_32-TransmitFile/definition        |    2 -
  ...ing-of-empty-string-in-WS_getaddrinf.patch |  110 ++
- 199 files changed, 10865 insertions(+), 5482 deletions(-)
+ 200 files changed, 10888 insertions(+), 5504 deletions(-)
  create mode 100644 patches/Staging/0003-loader-Add-commandline-option-patches-to-show-the-pa.patch
  delete mode 100644 patches/Staging/definition
  create mode 100644 patches/advapi32-CreateRestrictedToken/0001-ntdll-Implement-NtFilterToken.patch
@@ -3908,11 +3909,11 @@ index 636c6215..73073282 100644
 +2.26.2
  
 diff --git a/patches/ntdll-ApiSetMap/0001-ntdll-Add-dummy-apiset-to-PEB.patch b/patches/ntdll-ApiSetMap/0001-ntdll-Add-dummy-apiset-to-PEB.patch
-index 330037d8..ce6fcc1d 100644
+index d969b8c3..ce6fcc1d 100644
 --- a/patches/ntdll-ApiSetMap/0001-ntdll-Add-dummy-apiset-to-PEB.patch
 +++ b/patches/ntdll-ApiSetMap/0001-ntdll-Add-dummy-apiset-to-PEB.patch
 @@ -1,38 +1,38 @@
--From 768f70f18be51fe0a1d92c04fbf3795fd619e127 Mon Sep 17 00:00:00 2001
+-From ce7b43fafe87ec364bb98415dac1283fe611ead0 Mon Sep 17 00:00:00 2001
 +From 708e627172f61b5d0744135e31d4e9e3f7b32536 Mon Sep 17 00:00:00 2001
  From: =?UTF-8?q?Michael=20M=C3=BCller?= <michael@fds-team.de>
  Date: Mon, 3 Apr 2017 01:06:26 +0200
@@ -3928,10 +3929,11 @@ index 330037d8..ce6fcc1d 100644
   create mode 100644 include/apiset.h
  
 -diff --git a/dlls/ntdll/loader.c b/dlls/ntdll/loader.c
--index c2187a19397..2fb24737495 100644
+-index a6cfbb675eb..1354997f2e3 100644
 ---- a/dlls/ntdll/loader.c
 -+++ b/dlls/ntdll/loader.c
--@@ -170,6 +170,7 @@ static PEB_LDR_DATA ldr = { sizeof(ldr), TRUE };
+-@@ -169,6 +169,7 @@ static RTL_CRITICAL_SECTION peb_lock = { &peb_critsect_debug, -1, 0, 0, 0, 0 };
+- static PEB_LDR_DATA ldr = { sizeof(ldr), TRUE };
 +diff --git a/dlls/ntdll/thread.c b/dlls/ntdll/thread.c
 +index ca8b5e2bf8a..565dea14b39 100644
 +--- a/dlls/ntdll/thread.c
@@ -3939,13 +3941,13 @@ index 330037d8..ce6fcc1d 100644
 +@@ -75,6 +75,7 @@ static PEB_LDR_DATA ldr;
   static RTL_BITMAP tls_bitmap;
   static RTL_BITMAP tls_expansion_bitmap;
-  static RTL_BITMAP fls_bitmap;
++ static RTL_BITMAP fls_bitmap;
  +static API_SET_NAMESPACE_ARRAY apiset_map;
 + static int nb_threads = 1;
   
 - static WINE_MODREF *cached_modref;
 - static WINE_MODREF *current_modref;
--@@ -4017,6 +4018,7 @@ static NTSTATUS process_init(void)
+-@@ -4019,6 +4020,7 @@ static NTSTATUS process_init(void)
 - 
 -     peb->LdrData            = &ldr;
 + static RTL_CRITICAL_SECTION peb_lock;
@@ -3956,9 +3958,10 @@ index 330037d8..ce6fcc1d 100644
  +    peb->ApiSetMap          = &apiset_map;
       peb->TlsBitmap          = &tls_bitmap;
       peb->TlsExpansionBitmap = &tls_expansion_bitmap;
-      peb->FlsBitmap          = &fls_bitmap;
+-     peb->LoaderLock         = &loader_section;
++     peb->FlsBitmap          = &fls_bitmap;
  diff --git a/include/Makefile.in b/include/Makefile.in
--index 34daad90e78..ad4a131c245 100644
+-index 9ea8416211d..d52c0adf309 100644
 +index 9796dd8e5d9..2bc410f4308 100644
  --- a/include/Makefile.in
  +++ b/include/Makefile.in
@@ -3967,21 +3970,21 @@ index 330037d8..ce6fcc1d 100644
  +
  +#endif
  diff --git a/include/winternl.h b/include/winternl.h
--index 82328167c9e..6c720f7eff6 100644
+-index 89ea58c2d93..5723e0b3b7a 100644
 +index f362790dbca..b33e346885f 100644
  --- a/include/winternl.h
  +++ b/include/winternl.h
  @@ -23,6 +23,7 @@
-@@ -98,7 +98,7 @@ index 82328167c9e..6c720f7eff6 100644
+@@ -98,7 +98,7 @@ index 89ea58c2d93..5723e0b3b7a 100644
   
   #ifdef __cplusplus
   extern "C" {
--@@ -289,7 +290,7 @@ typedef struct _PEB
+-@@ -315,7 +316,7 @@ typedef struct _PEB
 +@@ -288,7 +289,7 @@ typedef struct _PEB
       ULONG                        EnvironmentUpdateCount;            /* 028/050 */
       PVOID                        KernelCallbackTable;               /* 02c/058 */
       ULONG                        Reserved[2];                       /* 030/060 */
-@@ -108,5 +108,5 @@ index 82328167c9e..6c720f7eff6 100644
+@@ -108,5 +108,5 @@ index 89ea58c2d93..5723e0b3b7a 100644
       PRTL_BITMAP                  TlsBitmap;                         /* 040/078 */
       ULONG                        TlsBitmapBits[2];                  /* 044/080 */
  -- 
@@ -16678,7 +16681,7 @@ index e7986a4e..31fb734d 100644
 +2.24.0
  
 diff --git a/patches/patchinstall.sh b/patches/patchinstall.sh
-index 0473ffd3..493567b9 100755
+index db3860ea..60a7ddb5 100755
 --- a/patches/patchinstall.sh
 +++ b/patches/patchinstall.sh
 @@ -34,6 +34,7 @@ usage()
@@ -19189,11 +19192,11 @@ index 769f1f3c..703c49ba 100644
   static struct object_type *mapping_get_type( struct object *obj )
   {
 diff --git a/patches/server-Object_Types/0008-ntdll-Set-TypeIndex-for-ObjectTypeInformation-in-NtQ.patch b/patches/server-Object_Types/0008-ntdll-Set-TypeIndex-for-ObjectTypeInformation-in-NtQ.patch
-index a571992a..feb7ddfc 100644
+index 82ca4283..feb7ddfc 100644
 --- a/patches/server-Object_Types/0008-ntdll-Set-TypeIndex-for-ObjectTypeInformation-in-NtQ.patch
 +++ b/patches/server-Object_Types/0008-ntdll-Set-TypeIndex-for-ObjectTypeInformation-in-NtQ.patch
 @@ -1,32 +1,31 @@
--From 64928073fc2e463fa9f637a9a1bcddfaeb5a55c6 Mon Sep 17 00:00:00 2001
+-From dfb9f91425d239620669215e9c914fbb1288dc4e Mon Sep 17 00:00:00 2001
 +From 1e3e93483b223c6e0e9d712fff4a8874c503c973 Mon Sep 17 00:00:00 2001
  From: =?UTF-8?q?Michael=20M=C3=BCller?= <michael@fds-team.de>
  Date: Wed, 8 Mar 2017 17:41:11 +0100
@@ -19211,10 +19214,10 @@ index a571992a..feb7ddfc 100644
   3 files changed, 9 insertions(+), 1 deletion(-)
  
 -diff --git a/dlls/ntdll/unix/file.c b/dlls/ntdll/unix/file.c
--index e18daaea5ca..ece09c12f77 100644
+-index 93678aa70e5..d72a8370500 100644
 ---- a/dlls/ntdll/unix/file.c
 -+++ b/dlls/ntdll/unix/file.c
--@@ -6589,6 +6589,10 @@ NTSTATUS WINAPI NtQueryObject( HANDLE handle, OBJECT_INFORMATION_CLASS info_clas
+-@@ -7554,6 +7554,10 @@ NTSTATUS WINAPI NtQueryObject( HANDLE handle, OBJECT_INFORMATION_CLASS info_clas
 -                     p->TypeName.Buffer[res / sizeof(WCHAR)] = 0;
 -                     if (used_len) *used_len = sizeof(*p) + p->TypeName.MaximumLength;
 +diff --git a/dlls/ntdll/om.c b/dlls/ntdll/om.c
@@ -19239,12 +19242,12 @@ index a571992a..feb7ddfc 100644
 -         SERVER_END_REQ;
 +             SERVER_END_REQ;
  diff --git a/server/directory.c b/server/directory.c
--index 65357e7f2e3..c752a652d49 100644
+-index 65357e7f2e3..99eafb9c53a 100644
 +index b4f53e2edf..59c8194d09 100644
  --- a/server/directory.c
  +++ b/server/directory.c
  @@ -44,6 +44,7 @@
-@@ -37,17 +36,17 @@ index 65357e7f2e3..c752a652d49 100644
+@@ -37,17 +36,17 @@ index 65357e7f2e3..99eafb9c53a 100644
   };
   
   static void object_type_dump( struct object *obj, int verbose );
@@ -19256,7 +19259,8 @@ index a571992a..feb7ddfc 100644
 +             assert( object_type_count < sizeof(object_type_list)/sizeof(object_type_list[0]) );
  -            object_type_list[ object_type_count++ ] = (struct object_type *)grab_object( type );
  +            type->index = object_type_count++;
- +            object_type_list[ type->index ] = (struct object_type *)grab_object( type );
+-+            object_type_list[ type->index ] = (struct object_type *)type;
+++            object_type_list[ type->index ] = (struct object_type *)grab_object( type );
 +             make_object_static( &type->obj );
           }
           clear_error();
@@ -19266,24 +19270,24 @@ index a571992a..feb7ddfc 100644
       {
           if ((name = get_object_name( &type->obj, &reply->total )))
               set_reply_data( name, min( reply->total, get_reply_max_size() ) );
-@@ -56,10 +55,10 @@ index 65357e7f2e3..c752a652d49 100644
+@@ -56,10 +55,10 @@ index 65357e7f2e3..99eafb9c53a 100644
       }
       release_object( obj );
  diff --git a/server/protocol.def b/server/protocol.def
--index 9bc4ba12042..b52321ed519 100644
+-index 8956e7175bf..9102f557e38 100644
 +index 98c4c58a4e..d6847f8d55 100644
  --- a/server/protocol.def
  +++ b/server/protocol.def
--@@ -3334,6 +3334,7 @@ struct handle_info
+-@@ -3319,6 +3319,7 @@ struct handle_info
 +@@ -3543,6 +3543,7 @@ struct handle_info
   @REQ(get_object_type)
       obj_handle_t   handle;        /* handle to the object */
   @REPLY
-@@ -68,5 +67,5 @@ index 9bc4ba12042..b52321ed519 100644
+@@ -68,5 +67,5 @@ index 8956e7175bf..9102f557e38 100644
       VARARG(type,unicode_str);     /* type name */
   @END
  -- 
--2.28.0
+-2.26.2
 +2.11.0
  
 diff --git a/patches/server-Object_Types/0009-ntdll-Set-object-type-for-System-Extended-HandleInfo.patch b/patches/server-Object_Types/0009-ntdll-Set-object-type-for-System-Extended-HandleInfo.patch
@@ -24213,6 +24217,122 @@ index 4ad9fee8..143739f7 100644
  -- 
 -2.28.0
 +2.22.0
+ 
+diff --git a/patches/ws2_32-Connect_Time/0001-ws2_32-Implement-returning-the-proper-time-with-SO_C.patch b/patches/ws2_32-Connect_Time/0001-ws2_32-Implement-returning-the-proper-time-with-SO_C.patch
+index 1db4366c..c59a54f9 100644
+--- a/patches/ws2_32-Connect_Time/0001-ws2_32-Implement-returning-the-proper-time-with-SO_C.patch
++++ b/patches/ws2_32-Connect_Time/0001-ws2_32-Implement-returning-the-proper-time-with-SO_C.patch
+@@ -1,4 +1,4 @@
+-From 02727b15297b66c66d622cc28dfa5f6cf1b044ac Mon Sep 17 00:00:00 2001
++From 750e6e7c7d5d3432136fc1560ffcf615ed5be03f Mon Sep 17 00:00:00 2001
+ From: Sebastian Lackner <sebastian@fds-team.de>
+ Date: Thu, 20 Nov 2014 13:27:24 +0100
+ Subject: [PATCH] ws2_32: Implement returning the proper time with
+@@ -10,16 +10,16 @@ To avoid calculations on the client-side, the server sends the connect time as r
+ Needs tools/make_requests.
+ ---
+  dlls/ws2_32/socket.c     | 21 ++++++++++++++++-----
+- dlls/ws2_32/tests/sock.c | 20 ++++++++++++++++++++
++ dlls/ws2_32/tests/sock.c | 19 +++++++++++++++++++
+  server/protocol.def      |  1 +
+  server/sock.c            |  1 +
+- 4 files changed, 38 insertions(+), 5 deletions(-)
++ 4 files changed, 37 insertions(+), 5 deletions(-)
+ 
+ diff --git a/dlls/ws2_32/socket.c b/dlls/ws2_32/socket.c
+-index 4568e7f1bae..60c243d14f0 100644
++index c36b7dc23dd..59dff66e37f 100644
+ --- a/dlls/ws2_32/socket.c
+ +++ b/dlls/ws2_32/socket.c
+-@@ -1344,6 +1344,21 @@ static DWORD sock_is_blocking(SOCKET s, BOOL *ret)
++@@ -1175,6 +1175,21 @@ static DWORD sock_is_blocking(SOCKET s, BOOL *ret)
+      return err;
+  }
+  
+@@ -41,7 +41,7 @@ index 4568e7f1bae..60c243d14f0 100644
+  static unsigned int _get_sock_mask(SOCKET s)
+  {
+      unsigned int ret;
+-@@ -3969,7 +3984,6 @@ INT WINAPI WS_getsockopt(SOCKET s, INT level,
++@@ -3962,7 +3977,6 @@ INT WINAPI WS_getsockopt(SOCKET s, INT level,
+  
+          case WS_SO_CONNECT_TIME:
+          {
+@@ -49,7 +49,7 @@ index 4568e7f1bae..60c243d14f0 100644
+              struct WS_sockaddr addr;
+              int len = sizeof(addr);
+  
+-@@ -3981,10 +3995,7 @@ INT WINAPI WS_getsockopt(SOCKET s, INT level,
++@@ -3974,10 +3988,7 @@ INT WINAPI WS_getsockopt(SOCKET s, INT level,
+              if (WS_getpeername(s, &addr, &len) == SOCKET_ERROR)
+                  *(DWORD *)optval = ~0u;
+              else
+@@ -62,10 +62,10 @@ index 4568e7f1bae..60c243d14f0 100644
+              return ret;
+          }
+ diff --git a/dlls/ws2_32/tests/sock.c b/dlls/ws2_32/tests/sock.c
+-index ba03e16ebb1..134433c4b6d 100644
++index b32d1c053df..60360bacc21 100644
+ --- a/dlls/ws2_32/tests/sock.c
+ +++ b/dlls/ws2_32/tests/sock.c
+-@@ -4801,11 +4801,15 @@ static void test_send(void)
++@@ -5385,6 +5385,8 @@ static void test_send(void)
+      OVERLAPPED ov;
+      BOOL bret;
+      DWORD id, bytes_sent, dwRet;
+@@ -74,14 +74,15 @@ index ba03e16ebb1..134433c4b6d 100644
+  
+      memset(&ov, 0, sizeof(ov));
+  
+-     tcp_socketpair(&src, &dst);
+- 
++@@ -5393,6 +5395,7 @@ static void test_send(void)
++         ok(0, "creating socket pair failed, skipping test\n");
++         return;
++     }
+ +    expected_time = GetTickCount();
+-+
++ 
+      set_blocking(dst, FALSE);
+      /* force disable buffering so we can get a pending overlapped request */
+-     ret = setsockopt(dst, SOL_SOCKET, SO_SNDBUF, (char *) &zero, sizeof(zero));
+-@@ -4878,6 +4882,22 @@ static void test_send(void)
++@@ -5479,6 +5482,22 @@ static void test_send(void)
+      ok(ret == SOCKET_ERROR && WSAGetLastError() == ERROR_IO_PENDING,
+         "Failed to start overlapped send %d - %d\n", ret, WSAGetLastError());
+  
+@@ -105,10 +106,10 @@ index ba03e16ebb1..134433c4b6d 100644
+      if (src != INVALID_SOCKET)
+          closesocket(src);
+ diff --git a/server/protocol.def b/server/protocol.def
+-index 8360b2611a1..f5f505d69fb 100644
++index af959ebdf82..8afe8e11435 100644
+ --- a/server/protocol.def
+ +++ b/server/protocol.def
+-@@ -1433,6 +1433,7 @@ enum server_fd_type
++@@ -1399,6 +1399,7 @@ enum server_fd_type
+      int family;                 /* family, see socket manpage */
+      int type;                   /* type, see socket manpage */
+      int protocol;               /* protocol, see socket manpage */
+@@ -117,10 +118,10 @@ index 8360b2611a1..f5f505d69fb 100644
+  
+  
+ diff --git a/server/sock.c b/server/sock.c
+-index 4f97fe72080..07e1cf3a2ca 100644
++index 040fa3d14b1..48ef19b4fbd 100644
+ --- a/server/sock.c
+ +++ b/server/sock.c
+-@@ -1565,6 +1565,7 @@ DECL_HANDLER(get_socket_info)
++@@ -1331,6 +1331,7 @@ DECL_HANDLER(get_socket_info)
+      reply->family   = sock->family;
+      reply->type     = sock->type;
+      reply->protocol = sock->proto;
+@@ -129,5 +130,5 @@ index 4f97fe72080..07e1cf3a2ca 100644
+      release_object( &sock->obj );
+  }
+ -- 
+-2.28.0
++2.19.1
  
 diff --git a/patches/ws2_32-TransmitFile/definition b/patches/ws2_32-TransmitFile/definition
 index a2a8db04..f54cc82d 100644

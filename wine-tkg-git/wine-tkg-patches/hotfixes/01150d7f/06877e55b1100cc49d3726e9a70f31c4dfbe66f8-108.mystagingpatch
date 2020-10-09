@@ -1,6 +1,6 @@
-From 75fe86d0e228449c187f8e5a4d928618a49e9e2a Mon Sep 17 00:00:00 2001
+From bda7fc6551fd0b7b3247001d7884cd53f2dfaf6f Mon Sep 17 00:00:00 2001
 From: Tk-Glitch <ti3nou@gmail.com>
-Date: Sat, 3 Oct 2020 18:01:25 +0200
+Date: Fri, 9 Oct 2020 13:16:36 +0200
 Subject: [PATCH 1/1] 01-staging-hotfixes
 
 ---
@@ -38,7 +38,7 @@ Subject: [PATCH 1/1] 01-staging-hotfixes
  ...port-for-multiple-parent-directories.patch |   51 +-
  .../0021-mf-Introduce-handler-helper.patch    |    5 +-
  ...-async-fileio-structures-if-possible.patch |   28 +-
- .../0001-ntdll-Add-dummy-apiset-to-PEB.patch  |   32 +-
+ .../0001-ntdll-Add-dummy-apiset-to-PEB.patch  |   36 +-
  patches/ntdll-ApiSetMap/definition            |    2 +-
  ...0001-ntdll-Fix-holes-in-ELF-mappings.patch |   32 +-
  ...-versions-of-RtlEnterCriticalSection.patch |   18 +-
@@ -62,12 +62,12 @@ Subject: [PATCH 1/1] 01-staging-hotfixes
  ...t-for-FileFsFullSizeInformation-clas.patch |  104 +-
  ...tectVirtualMemory-and-NtCreateSectio.patch |   22 +-
  ...h-on-mmap-error-in-try_map_free_area.patch |   35 +
- ...ree-ranges-view-block-size-on-64-bit.patch |   29 -
+ ...ree-ranges-view-block-size-on-64-bit.patch |   28 -
  ...XED_NOREPLACE-flag-in-try_map_free_a.patch |   51 +
  ...om-up-allocation-order-for-64-bit-ar.patch |   58 +
- ...tively-mapped-areas-from-free-areas-.patch |  256 ----
- ...ep-after-failed-map-attempt-in-try_.patch} |   11 +-
- ...ea-list-for-virtual-memory-allocati.patch} |  375 +++---
+ ...tively-mapped-areas-from-free-areas-.patch |  268 ----
+ ...ep-after-failed-map-attempt-in-try_.patch} |    8 +-
+ ...ea-list-for-virtual-memory-allocati.patch} |  391 +++---
  ...y-exclude-natively-mapped-areas-from.patch |   66 +
  ...t-HashLinks-field-in-LDR-module-data.patch |   72 +-
  ...-Improve-heap-allocation-performance.patch |  106 +-
@@ -165,7 +165,7 @@ Subject: [PATCH 1/1] 01-staging-hotfixes
  ...SystemExtendedHandleInformation-in-N.patch |  166 +--
  ...ObjectTypesInformation-in-NtQueryObj.patch |  211 ++--
  ...server-Register-types-during-startup.patch |   10 +-
- ...dex-for-ObjectTypeInformation-in-NtQ.patch |   53 +-
+ ...dex-for-ObjectTypeInformation-in-NtQ.patch |   55 +-
  ...-type-for-System-Extended-HandleInfo.patch |   76 +-
  ...ct-type-behavior-for-different-windo.patch |  147 ++-
  patches/server-Object_Types/definition        |    3 +-
@@ -200,9 +200,10 @@ Subject: [PATCH 1/1] 01-staging-hotfixes
  ...ub-implementation-of-Wow64Transition.patch |   44 +-
  patches/wow64cpu-Wow64Transition/definition   |    1 +
  .../0001-wpcap-Load-libpcap-dynamically.patch |   47 +-
+ ...-returning-the-proper-time-with-SO_C.patch |   39 +-
  patches/ws2_32-TransmitFile/definition        |    2 -
  ...ing-of-empty-string-in-WS_getaddrinf.patch |  110 ++
- 199 files changed, 10865 insertions(+), 5482 deletions(-)
+ 200 files changed, 10895 insertions(+), 5521 deletions(-)
  create mode 100644 patches/Staging/0003-loader-Add-commandline-option-patches-to-show-the-pa.patch
  delete mode 100644 patches/Staging/definition
  create mode 100644 patches/advapi32-CreateRestrictedToken/0001-ntdll-Implement-NtFilterToken.patch
@@ -228,8 +229,8 @@ Subject: [PATCH 1/1] 01-staging-hotfixes
  create mode 100644 patches/ntdll-ForceBottomUpAlloc/0002-ntdll-Use-MAP_FIXED_NOREPLACE-flag-in-try_map_free_a.patch
  create mode 100644 patches/ntdll-ForceBottomUpAlloc/0003-ntdll-Force-bottom-up-allocation-order-for-64-bit-ar.patch
  delete mode 100644 patches/ntdll-ForceBottomUpAlloc/0004-ntdll-Exclude-natively-mapped-areas-from-free-areas-.patch
- rename patches/ntdll-ForceBottomUpAlloc/{0001-ntdll-Increase-step-after-failed-map-attempt-in-try_.patch => 0004-ntdll-Increase-step-after-failed-map-attempt-in-try_.patch} (56%)
- rename patches/ntdll-ForceBottomUpAlloc/{0003-ntdll-Force-virtual-memory-allocation-order.patch => 0005-ntdll-Use-free-area-list-for-virtual-memory-allocati.patch} (54%)
+ rename patches/ntdll-ForceBottomUpAlloc/{0001-ntdll-Increase-step-after-failed-map-attempt-in-try_.patch => 0004-ntdll-Increase-step-after-failed-map-attempt-in-try_.patch} (70%)
+ rename patches/ntdll-ForceBottomUpAlloc/{0003-ntdll-Force-virtual-memory-allocation-order.patch => 0005-ntdll-Use-free-area-list-for-virtual-memory-allocati.patch} (51%)
  create mode 100644 patches/ntdll-ForceBottomUpAlloc/0006-ntdll-Permanently-exclude-natively-mapped-areas-from.patch
  create mode 100644 patches/ntdll-Junction_Points/0005-kernel32-ntdll-Add-support-for-deleting-junction-poi.patch
  delete mode 100644 patches/ntdll-Junction_Points/0005-server-Add-support-for-deleting-junction-points-with.patch
@@ -3908,11 +3909,11 @@ index 636c6215..73073282 100644
 +2.26.2
  
 diff --git a/patches/ntdll-ApiSetMap/0001-ntdll-Add-dummy-apiset-to-PEB.patch b/patches/ntdll-ApiSetMap/0001-ntdll-Add-dummy-apiset-to-PEB.patch
-index 330037d8..ce6fcc1d 100644
+index d969b8c3..ce6fcc1d 100644
 --- a/patches/ntdll-ApiSetMap/0001-ntdll-Add-dummy-apiset-to-PEB.patch
 +++ b/patches/ntdll-ApiSetMap/0001-ntdll-Add-dummy-apiset-to-PEB.patch
 @@ -1,38 +1,38 @@
--From 768f70f18be51fe0a1d92c04fbf3795fd619e127 Mon Sep 17 00:00:00 2001
+-From ce7b43fafe87ec364bb98415dac1283fe611ead0 Mon Sep 17 00:00:00 2001
 +From 708e627172f61b5d0744135e31d4e9e3f7b32536 Mon Sep 17 00:00:00 2001
  From: =?UTF-8?q?Michael=20M=C3=BCller?= <michael@fds-team.de>
  Date: Mon, 3 Apr 2017 01:06:26 +0200
@@ -3928,10 +3929,11 @@ index 330037d8..ce6fcc1d 100644
   create mode 100644 include/apiset.h
  
 -diff --git a/dlls/ntdll/loader.c b/dlls/ntdll/loader.c
--index c2187a19397..2fb24737495 100644
+-index a6cfbb675eb..1354997f2e3 100644
 ---- a/dlls/ntdll/loader.c
 -+++ b/dlls/ntdll/loader.c
--@@ -170,6 +170,7 @@ static PEB_LDR_DATA ldr = { sizeof(ldr), TRUE };
+-@@ -169,6 +169,7 @@ static RTL_CRITICAL_SECTION peb_lock = { &peb_critsect_debug, -1, 0, 0, 0, 0 };
+- static PEB_LDR_DATA ldr = { sizeof(ldr), TRUE };
 +diff --git a/dlls/ntdll/thread.c b/dlls/ntdll/thread.c
 +index ca8b5e2bf8a..565dea14b39 100644
 +--- a/dlls/ntdll/thread.c
@@ -3939,13 +3941,13 @@ index 330037d8..ce6fcc1d 100644
 +@@ -75,6 +75,7 @@ static PEB_LDR_DATA ldr;
   static RTL_BITMAP tls_bitmap;
   static RTL_BITMAP tls_expansion_bitmap;
-  static RTL_BITMAP fls_bitmap;
++ static RTL_BITMAP fls_bitmap;
  +static API_SET_NAMESPACE_ARRAY apiset_map;
 + static int nb_threads = 1;
   
 - static WINE_MODREF *cached_modref;
 - static WINE_MODREF *current_modref;
--@@ -4017,6 +4018,7 @@ static NTSTATUS process_init(void)
+-@@ -4019,6 +4020,7 @@ static NTSTATUS process_init(void)
 - 
 -     peb->LdrData            = &ldr;
 + static RTL_CRITICAL_SECTION peb_lock;
@@ -3956,9 +3958,10 @@ index 330037d8..ce6fcc1d 100644
  +    peb->ApiSetMap          = &apiset_map;
       peb->TlsBitmap          = &tls_bitmap;
       peb->TlsExpansionBitmap = &tls_expansion_bitmap;
-      peb->FlsBitmap          = &fls_bitmap;
+-     peb->LoaderLock         = &loader_section;
++     peb->FlsBitmap          = &fls_bitmap;
  diff --git a/include/Makefile.in b/include/Makefile.in
--index 34daad90e78..ad4a131c245 100644
+-index 9ea8416211d..d52c0adf309 100644
 +index 9796dd8e5d9..2bc410f4308 100644
  --- a/include/Makefile.in
  +++ b/include/Makefile.in
@@ -3967,21 +3970,21 @@ index 330037d8..ce6fcc1d 100644
  +
  +#endif
  diff --git a/include/winternl.h b/include/winternl.h
--index 82328167c9e..6c720f7eff6 100644
+-index 89ea58c2d93..5723e0b3b7a 100644
 +index f362790dbca..b33e346885f 100644
  --- a/include/winternl.h
  +++ b/include/winternl.h
  @@ -23,6 +23,7 @@
-@@ -98,7 +98,7 @@ index 82328167c9e..6c720f7eff6 100644
+@@ -98,7 +98,7 @@ index 89ea58c2d93..5723e0b3b7a 100644
   
   #ifdef __cplusplus
   extern "C" {
--@@ -289,7 +290,7 @@ typedef struct _PEB
+-@@ -315,7 +316,7 @@ typedef struct _PEB
 +@@ -288,7 +289,7 @@ typedef struct _PEB
       ULONG                        EnvironmentUpdateCount;            /* 028/050 */
       PVOID                        KernelCallbackTable;               /* 02c/058 */
       ULONG                        Reserved[2];                       /* 030/060 */
-@@ -108,5 +108,5 @@ index 82328167c9e..6c720f7eff6 100644
+@@ -108,5 +108,5 @@ index 89ea58c2d93..5723e0b3b7a 100644
       PRTL_BITMAP                  TlsBitmap;                         /* 040/078 */
       ULONG                        TlsBitmapBits[2];                  /* 044/080 */
  -- 
@@ -6068,22 +6071,21 @@ index 00000000..579f6562
 +
 diff --git a/patches/ntdll-ForceBottomUpAlloc/0002-ntdll-Increase-free-ranges-view-block-size-on-64-bit.patch b/patches/ntdll-ForceBottomUpAlloc/0002-ntdll-Increase-free-ranges-view-block-size-on-64-bit.patch
 deleted file mode 100644
-index 326980d2..00000000
+index f32fecb3..00000000
 --- a/patches/ntdll-ForceBottomUpAlloc/0002-ntdll-Increase-free-ranges-view-block-size-on-64-bit.patch
 +++ /dev/null
-@@ -1,29 +0,0 @@
--From 01730a2261a59a2826a652360b69dd3c74917fa6 Mon Sep 17 00:00:00 2001
+@@ -1,28 +0,0 @@
+-From 266f5082387ec92cb79a2ec3ce71d956cf05190d Mon Sep 17 00:00:00 2001
 -From: Paul Gofman <pgofman@codeweavers.com>
 -Date: Thu, 23 Jul 2020 18:40:39 +0300
 -Subject: [PATCH] ntdll: Increase free ranges view block size on 64 bit.
 -
--Signed-off-by: Paul Gofman <pgofman@codeweavers.com>
 ----
 - dlls/ntdll/unix/virtual.c | 4 ++++
 - 1 file changed, 4 insertions(+)
 -
 -diff --git a/dlls/ntdll/unix/virtual.c b/dlls/ntdll/unix/virtual.c
--index f7eab895f58..54ad53ea088 100644
+-index f8f317a6483..4ca033b0e19 100644
 ---- a/dlls/ntdll/unix/virtual.c
 -+++ b/dlls/ntdll/unix/virtual.c
 -@@ -183,7 +183,11 @@ static BYTE *pages_vprot;
@@ -6099,7 +6101,7 @@ index 326980d2..00000000
 - static void *preload_reserve_end;
 - static BOOL force_exec_prot;  /* whether to force PROT_EXEC on all PROT_READ mmaps */
 --- 
--2.28.0
+-2.26.2
 -
 diff --git a/patches/ntdll-ForceBottomUpAlloc/0002-ntdll-Use-MAP_FIXED_NOREPLACE-flag-in-try_map_free_a.patch b/patches/ntdll-ForceBottomUpAlloc/0002-ntdll-Use-MAP_FIXED_NOREPLACE-flag-in-try_map_free_a.patch
 new file mode 100644
@@ -6224,23 +6226,21 @@ index 00000000..2fbdf31b
 +
 diff --git a/patches/ntdll-ForceBottomUpAlloc/0004-ntdll-Exclude-natively-mapped-areas-from-free-areas-.patch b/patches/ntdll-ForceBottomUpAlloc/0004-ntdll-Exclude-natively-mapped-areas-from-free-areas-.patch
 deleted file mode 100644
-index 3a6882ef..00000000
+index fb8b87c9..00000000
 --- a/patches/ntdll-ForceBottomUpAlloc/0004-ntdll-Exclude-natively-mapped-areas-from-free-areas-.patch
 +++ /dev/null
-@@ -1,256 +0,0 @@
--From 479dfa05cc83b7ae8ab0f40862e74efedd98df48 Mon Sep 17 00:00:00 2001
+@@ -1,268 +0,0 @@
+-From 14825c31d376ab5e55991fd459583e3afd3dfcde Mon Sep 17 00:00:00 2001
 -From: Paul Gofman <pgofman@codeweavers.com>
 -Date: Tue, 2 Jun 2020 21:06:33 +0300
--Subject: [PATCH 4/4] ntdll: Exclude natively mapped areas from free areas
-- list.
+-Subject: [PATCH] ntdll: Exclude natively mapped areas from free areas list.
 -
--Signed-off-by: Paul Gofman <pgofman@codeweavers.com>
 ----
-- dlls/ntdll/unix/virtual.c | 130 ++++++++++++++++++++++++++++++--------
-- 1 file changed, 103 insertions(+), 27 deletions(-)
+- dlls/ntdll/unix/virtual.c | 137 ++++++++++++++++++++++++++++++--------
+- 1 file changed, 109 insertions(+), 28 deletions(-)
 -
 -diff --git a/dlls/ntdll/unix/virtual.c b/dlls/ntdll/unix/virtual.c
--index e7dfc516538..dad12b5a9f2 100644
+-index 5bb9511be6d..f5281128543 100644
 ---- a/dlls/ntdll/unix/virtual.c
 -+++ b/dlls/ntdll/unix/virtual.c
 -@@ -103,6 +103,7 @@ struct file_view
@@ -6251,7 +6251,7 @@ index 3a6882ef..00000000
 - 
 - /* Conversion from VPROT_* to Win32 flags */
 - static const BYTE VIRTUAL_Win32Flags[16] =
--@@ -877,7 +878,9 @@ static void dump_view( struct file_view *view )
+-@@ -870,7 +871,9 @@ static void dump_view( struct file_view *view )
 -     BYTE prot = get_page_vprot( addr );
 - 
 -     TRACE( "View: %p - %p", addr, addr + view->size - 1 );
@@ -6262,7 +6262,7 @@ index 3a6882ef..00000000
 -         TRACE( " (builtin image)\n" );
 -     else if (view->protect & SEC_IMAGE)
 -         TRACE( " (image)\n" );
--@@ -1019,6 +1022,16 @@ static struct file_view *find_view_range( const void *addr, size_t size )
+-@@ -1012,6 +1015,16 @@ static struct file_view *find_view_range( const void *addr, size_t size )
 -     return NULL;
 - }
 - 
@@ -6279,7 +6279,7 @@ index 3a6882ef..00000000
 - 
 - /***********************************************************************
 -  *           try_map_free_area
--@@ -1026,21 +1039,27 @@ static struct file_view *find_view_range( const void *addr, size_t size )
+-@@ -1019,21 +1032,27 @@ static struct file_view *find_view_range( const void *addr, size_t size )
 -  * Try mmaping some expected free memory region, eventually stepping and
 -  * retrying inside it, and return where it actually succeeded, or NULL.
 -  */
@@ -6312,7 +6312,7 @@ index 3a6882ef..00000000
 -         if ((step > 0 && (char *)end - (char *)start < step) ||
 -             (step < 0 && (char *)start - (char *)base < -step) ||
 -             step == 0)
--@@ -1502,15 +1521,6 @@ static inline void *unmap_extra_space( void *ptr, size_t total_size, size_t want
+-@@ -1475,15 +1494,6 @@ static inline void *unmap_extra_space( void *ptr, size_t total_size, size_t want
 -     return ptr;
 - }
 - 
@@ -6328,18 +6328,18 @@ index 3a6882ef..00000000
 - static int CDECL alloc_area_in_reserved_or_between_callback( void *start, SIZE_T size, void *arg )
 - {
 -     char *intersect_start, *intersect_end;
--@@ -1536,8 +1546,8 @@ static int CDECL alloc_area_in_reserved_or_between_callback( void *start, SIZE_T
-- 
--         if (alloc_start >= intersect_end)
+-@@ -1509,8 +1519,8 @@ static int CDECL alloc_area_in_reserved_or_between_callback( void *start, SIZE_T
+-         if (area->map_area_end - intersect_end >= area->size)
 -         {
---            if ((area->result = try_map_free_area( area->map_area_start, alloc_start + size, area->step,
+-             alloc_start = ROUND_ADDR( (char *)area->map_area_end - size, granularity_mask );
+--            if ((area->result = try_map_free_area( intersect_end, alloc_start + size, area->step,
 --                    alloc_start, area->size, area->unix_prot )))
--+            if ((area->result = try_map_free_area( area, area->map_area_start,
+-+            if ((area->result = try_map_free_area( area, intersect_end,
 -+                    alloc_start + size, alloc_start )))
 -                 return 1;
 -         }
 - 
--@@ -1571,8 +1581,8 @@ static int CDECL alloc_area_in_reserved_or_between_callback( void *start, SIZE_T
+-@@ -1545,8 +1555,8 @@ static int CDECL alloc_area_in_reserved_or_between_callback( void *start, SIZE_T
 - 
 -         if (intersect_start - area->map_area_start >= area->size)
 -         {
@@ -6350,7 +6350,7 @@ index 3a6882ef..00000000
 -                 return 1;
 -         }
 - 
--@@ -1627,8 +1637,7 @@ static void *alloc_free_area_in_range( struct alloc_area *area, char *base, char
+-@@ -1601,8 +1611,7 @@ static void *alloc_free_area_in_range( struct alloc_area *area, char *base, char
 -         if (start >= area->map_area_end || start < area->map_area_start)
 -             return NULL;
 - 
@@ -6360,7 +6360,7 @@ index 3a6882ef..00000000
 -     }
 -     else
 -     {
--@@ -1637,8 +1646,7 @@ static void *alloc_free_area_in_range( struct alloc_area *area, char *base, char
+-@@ -1611,8 +1620,7 @@ static void *alloc_free_area_in_range( struct alloc_area *area, char *base, char
 -                 || area->map_area_end - start < area->size)
 -             return NULL;
 - 
@@ -6370,7 +6370,7 @@ index 3a6882ef..00000000
 -     }
 - }
 - 
--@@ -1648,6 +1656,7 @@ static void *alloc_free_area( void *limit, size_t size, BOOL top_down, int unix_
+-@@ -1622,6 +1630,7 @@ static void *alloc_free_area( void *limit, size_t size, BOOL top_down, int unix_
 -     char *reserve_start, *reserve_end;
 -     struct alloc_area area;
 -     char *base, *end;
@@ -6378,7 +6378,7 @@ index 3a6882ef..00000000
 -     int ranges_inc;
 - 
 -     TRACE("limit %p, size %p, top_down %#x.\n", limit, (void *)size, top_down);
--@@ -1703,16 +1712,67 @@ static void *alloc_free_area( void *limit, size_t size, BOOL top_down, int unix_
+-@@ -1677,16 +1686,67 @@ static void *alloc_free_area( void *limit, size_t size, BOOL top_down, int unix_
 -             {
 -                 /* range is split in two by the preloader reservation, try first part. */
 -                 if ((area.result = alloc_free_area_in_range( &area, base, reserve_start )))
@@ -6449,7 +6449,7 @@ index 3a6882ef..00000000
 - }
 - 
 - /***********************************************************************
--@@ -1766,6 +1826,17 @@ static NTSTATUS map_fixed_area( void *base, size_t size, unsigned int vprot )
+-@@ -1740,6 +1800,17 @@ static NTSTATUS map_fixed_area( void *base, size_t size, unsigned int vprot )
 -     return STATUS_SUCCESS;
 - }
 - 
@@ -6467,7 +6467,7 @@ index 3a6882ef..00000000
 - /***********************************************************************
 -  *           map_view
 -  *
--@@ -1789,7 +1860,12 @@ static NTSTATUS map_view( struct file_view **view_ret, void *base, size_t size,
+-@@ -1763,7 +1834,12 @@ static NTSTATUS map_view( struct file_view **view_ret, void *base, size_t size,
 -     else if (!(ptr = alloc_free_area( (void*)(get_zero_bits_64_mask( zero_bits_64 )
 -             & (UINT_PTR)user_space_limit), size, top_down, get_unix_prot( vprot ) )))
 -     {
@@ -6481,54 +6481,64 @@ index 3a6882ef..00000000
 -     }
 -     status = create_view( view_ret, ptr, size, vprot );
 -     if (status != STATUS_SUCCESS) unmap_area( ptr, size );
+-@@ -3222,7 +3298,12 @@ void virtual_set_force_exec( BOOL enable )
+-         WINE_RB_FOR_EACH_ENTRY( view, &views_tree, struct file_view, entry )
+-         {
+-             /* file mappings are always accessible */
+--            BYTE commit = is_view_valloc( view ) ? 0 : VPROT_COMMITTED;
+-+            BYTE commit;
+-+
+-+            if (view->protect & VPROT_NATIVE)
+-+                continue;
+-+
+-+            commit = is_view_valloc( view ) ? 0 : VPROT_COMMITTED;
+- 
+-             mprotect_range( view->base, view->size, commit, 0 );
+-         }
 --- 
 -2.26.2
 -
 diff --git a/patches/ntdll-ForceBottomUpAlloc/0001-ntdll-Increase-step-after-failed-map-attempt-in-try_.patch b/patches/ntdll-ForceBottomUpAlloc/0004-ntdll-Increase-step-after-failed-map-attempt-in-try_.patch
-similarity index 56%
+similarity index 70%
 rename from patches/ntdll-ForceBottomUpAlloc/0001-ntdll-Increase-step-after-failed-map-attempt-in-try_.patch
 rename to patches/ntdll-ForceBottomUpAlloc/0004-ntdll-Increase-step-after-failed-map-attempt-in-try_.patch
-index 8abaf03e..241ebebf 100644
+index b1a4064e..241ebebf 100644
 --- a/patches/ntdll-ForceBottomUpAlloc/0001-ntdll-Increase-step-after-failed-map-attempt-in-try_.patch
 +++ b/patches/ntdll-ForceBottomUpAlloc/0004-ntdll-Increase-step-after-failed-map-attempt-in-try_.patch
-@@ -1,19 +1,18 @@
--From ff02cbe4aea411563e0a9d22ed832acc2747d5b7 Mon Sep 17 00:00:00 2001
+@@ -1,5 +1,5 @@
+-From d28a26a59e9837191cc48854d5dad16eba532f04 Mon Sep 17 00:00:00 2001
 -From: Paul Gofman <pgofman@codeweavers.com>
 +From 0e03dab87634938bf9b6462a3e7dce1def1289c9 Mon Sep 17 00:00:00 2001
 +From: Paul Gofman <gofmanp@gmail.com>
  Date: Tue, 14 Jan 2020 21:39:23 +0300
--Subject: [PATCH 1/4] ntdll: Increase step after failed map attempt in
-+Subject: [PATCH] ntdll: Increase step after failed map attempt in
+ Subject: [PATCH] ntdll: Increase step after failed map attempt in
   try_map_free_area().
- 
--Signed-off-by: Paul Gofman <pgofman@codeweavers.com>
- ---
-  dlls/ntdll/unix/virtual.c | 1 +
+@@ -9,10 +9,10 @@ Subject: [PATCH] ntdll: Increase step after failed map attempt in
   1 file changed, 1 insertion(+)
  
  diff --git a/dlls/ntdll/unix/virtual.c b/dlls/ntdll/unix/virtual.c
--index b469e9df4a1..52915e07323 100644
+-index d79e3de662e..f8f317a6483 100644
 +index 4b8942b1b53b..f4dba39cb160 100644
  --- a/dlls/ntdll/unix/virtual.c
  +++ b/dlls/ntdll/unix/virtual.c
--@@ -1080,6 +1080,7 @@ static void* try_map_free_area( void *base, void *end, ptrdiff_t step,
+-@@ -1073,6 +1073,7 @@ static void* try_map_free_area( void *base, void *end, ptrdiff_t step,
 +@@ -1083,6 +1083,7 @@ static void* try_map_free_area( void *base, void *end, ptrdiff_t step,
               step == 0)
               break;
           start = (char *)start + step;
 diff --git a/patches/ntdll-ForceBottomUpAlloc/0003-ntdll-Force-virtual-memory-allocation-order.patch b/patches/ntdll-ForceBottomUpAlloc/0005-ntdll-Use-free-area-list-for-virtual-memory-allocati.patch
-similarity index 54%
+similarity index 51%
 rename from patches/ntdll-ForceBottomUpAlloc/0003-ntdll-Force-virtual-memory-allocation-order.patch
 rename to patches/ntdll-ForceBottomUpAlloc/0005-ntdll-Use-free-area-list-for-virtual-memory-allocati.patch
-index 55309fee..19d09a62 100644
+index 535f4498..19d09a62 100644
 --- a/patches/ntdll-ForceBottomUpAlloc/0003-ntdll-Force-virtual-memory-allocation-order.patch
 +++ b/patches/ntdll-ForceBottomUpAlloc/0005-ntdll-Use-free-area-list-for-virtual-memory-allocati.patch
-@@ -1,26 +1,76 @@
--From 1823294e18c99c17f3085486f12dcd2c6f8555b6 Mon Sep 17 00:00:00 2001
+@@ -1,25 +1,76 @@
+-From 43fc939825dd5d4d2fdbfd98f849d71eaebfa8d0 Mon Sep 17 00:00:00 2001
 +From 93e4ba286e3eee3cb846d05014cea4e92bee6c1b Mon Sep 17 00:00:00 2001
  From: Paul Gofman <pgofman@codeweavers.com>
 -Date: Mon, 25 Nov 2019 12:19:20 +0300
--Subject: [PATCH 3/4] ntdll: Force virtual memory allocation order.
+-Subject: [PATCH] ntdll: Force virtual memory allocation order.
 +Date: Tue, 14 Jan 2020 21:42:21 +0300
 +Subject: [PATCH] ntdll: Use free area list for virtual memory allocation.
  
@@ -6540,19 +6550,18 @@ index 55309fee..19d09a62 100644
 -
 -Wine-Bug: https://bugs.winehq.org/show_bug.cgi?id=48175
 -Wine-Bug: https://bugs.winehq.org/show_bug.cgi?id=46568
--Signed-off-by: Paul Gofman <pgofman@codeweavers.com>
  ---
-- dlls/ntdll/unix/virtual.c | 417 ++++++++++++++++++--------------------
-- 1 file changed, 201 insertions(+), 216 deletions(-)
+- dlls/ntdll/unix/virtual.c | 418 ++++++++++++++++++--------------------
+- 1 file changed, 202 insertions(+), 216 deletions(-)
 + dlls/ntdll/unix/virtual.c | 342 +++++++++++++++++++++++++-------------
 + 1 file changed, 230 insertions(+), 112 deletions(-)
  
  diff --git a/dlls/ntdll/unix/virtual.c b/dlls/ntdll/unix/virtual.c
--index 924dff973ce..e7dfc516538 100644
+-index 4ca033b0e19..5bb9511be6d 100644
 +index f4dba39cb160..4827a1d785a4 100644
  --- a/dlls/ntdll/unix/virtual.c
  +++ b/dlls/ntdll/unix/virtual.c
--@@ -1020,44 +1020,6 @@ static struct file_view *find_view_range( const void *addr, size_t size )
+-@@ -1013,44 +1013,6 @@ static struct file_view *find_view_range( const void *addr, size_t size )
 +@@ -195,7 +195,11 @@ static BYTE *pages_vprot;
 + #endif
 + 
@@ -6616,7 +6625,7 @@ index 55309fee..19d09a62 100644
   }
   
   
-@@ -28,7 +78,7 @@ index 924dff973ce..e7dfc516538 100644
+@@ -27,7 +78,7 @@ index 4ca033b0e19..5bb9511be6d 100644
  - *           find_view_inside_range
  - *
  - * Find first (resp. last, if top_down) view inside a range.
@@ -6625,16 +6634,16 @@ index 55309fee..19d09a62 100644
  - */
  -static struct wine_rb_entry *find_view_inside_range( void **base_ptr, void **end_ptr, int top_down )
  -{
-@@ -65,7 +115,7 @@ index 924dff973ce..e7dfc516538 100644
+@@ -64,7 +115,7 @@ index 4ca033b0e19..5bb9511be6d 100644
   /***********************************************************************
    *           try_map_free_area
    *
--@@ -1090,110 +1052,6 @@ static void* try_map_free_area( void *base, void *end, ptrdiff_t step,
+-@@ -1083,110 +1045,6 @@ static void* try_map_free_area( void *base, void *end, ptrdiff_t step,
 +@@ -1089,65 +1062,11 @@ static void* try_map_free_area( void *base, void *end, ptrdiff_t step,
       return NULL;
   }
   
-@@ -74,7 +124,7 @@ index 924dff973ce..e7dfc516538 100644
+@@ -73,7 +124,7 @@ index 4ca033b0e19..5bb9511be6d 100644
  - *           map_free_area
  - *
  - * Find a free area between views inside the specified range and map it.
@@ -6643,7 +6652,7 @@ index 55309fee..19d09a62 100644
  - */
  -static void *map_free_area( void *base, void *end, size_t size, int top_down, int unix_prot )
  -{
-@@ -121,62 +171,17 @@ index 924dff973ce..e7dfc516538 100644
+@@ -120,62 +171,17 @@ index 4ca033b0e19..5bb9511be6d 100644
  -    return start;
  -}
  -
@@ -6703,7 +6712,7 @@ index 55309fee..19d09a62 100644
 -  *           add_reserved_area
 +  *           find_reserved_free_area
    *
--@@ -1351,8 +1209,7 @@ static void delete_view( struct file_view *view ) /* [in] View */
+-@@ -1344,8 +1202,7 @@ static void delete_view( struct file_view *view ) /* [in] View */
 +  * Find a free area between views inside the specified range.
 +  * The csVirtual section must be held by caller.
 +- * The range must be inside the preloader reserved range.
@@ -6714,20 +6723,20 @@ index 55309fee..19d09a62 100644
   {
       if (!(view->protect & VPROT_SYSTEM)) unmap_area( view->base, view->size );
       set_page_vprot( view->base, view->size, 0 );
-@@ -186,7 +191,7 @@ index 924dff973ce..e7dfc516538 100644
+@@ -185,7 +191,7 @@ index 4ca033b0e19..5bb9511be6d 100644
       wine_rb_remove( &views_tree, &view->entry );
       *(struct file_view **)view = next_free_view;
       next_free_view = view;
--@@ -1400,8 +1257,7 @@ static NTSTATUS create_view( struct file_view **view_ret, void *base, size_t siz
+-@@ -1393,8 +1250,7 @@ static NTSTATUS create_view( struct file_view **view_ret, void *base, size_t siz
 +@@ -1410,8 +1328,7 @@ static NTSTATUS create_view( struct file_view **view_ret, void *base, size_t siz
       set_page_vprot( base, size, vprot );
   
       wine_rb_put( &views_tree, view->base, &view->entry );
-@@ -196,47 +201,36 @@ index 924dff973ce..e7dfc516538 100644
+@@ -195,47 +201,36 @@ index 4ca033b0e19..5bb9511be6d 100644
   
       *view_ret = view;
   
--@@ -1646,54 +1502,219 @@ static inline void *unmap_extra_space( void *ptr, size_t total_size, size_t want
+-@@ -1619,54 +1475,220 @@ static inline void *unmap_extra_space( void *ptr, size_t total_size, size_t want
 -     return ptr;
 +@@ -1656,6 +1573,7 @@ struct alloc_area
 +     int    top_down;
@@ -6791,15 +6800,25 @@ index 55309fee..19d09a62 100644
  +        if (area->map_area_start >= end)
  +            return 1;
  +
-@@ -252,24 +246,16 @@ index 924dff973ce..e7dfc516538 100644
- +        alloc_start = ROUND_ADDR( (char *)area->map_area_end - size, granularity_mask );
+@@ -246,26 +241,21 @@ index 4ca033b0e19..5bb9511be6d 100644
+ +        intersect_end = min((char *)end, area->map_area_end);
  +
- +        if (alloc_start >= intersect_end)
+ +        assert(ROUND_ADDR(intersect_start, granularity_mask) == intersect_start);
+-+        assert(ROUND_ADDR(intersect_end + granularity_mask, granularity_mask) == intersect_end);
+-+        assert(ROUND_ADDR(area->map_area_end, granularity_mask) == area->map_area_end);
+++        assert(ROUND_ADDR(intersect_end + granularity_mask - 1, granularity_mask) == intersect_end);
+ +
+-+        if (area->map_area_end - intersect_end >= area->size)
 -         {
 --            if (preload_reserve_start <= start) return 0;  /* no space in that area */
 --            if (preload_reserve_start < end) end = preload_reserve_start;
+-+            alloc_start = ROUND_ADDR( (char *)area->map_area_end - size, granularity_mask );
+-+            if ((area->result = try_map_free_area( intersect_end, alloc_start + size, area->step,
+++        alloc_start = ROUND_ADDR( (char *)area->map_area_end - size, granularity_mask );
+++
+++        if (alloc_start >= intersect_end)
 ++        {
- +            if ((area->result = try_map_free_area( area->map_area_start, alloc_start + size, area->step,
+++            if ((area->result = try_map_free_area( area->map_area_start, alloc_start + size, area->step,
  +                    alloc_start, area->size, area->unix_prot )))
  +                return 1;
 -         }
@@ -6807,21 +6826,31 @@ index 55309fee..19d09a62 100644
 --        else
 ++        }
  +
- +        alloc_start = ROUND_ADDR( intersect_end - area->size, granularity_mask );
- +        if (alloc_start >= intersect_start)
--         {
---            /* range is split in two by the preloader reservation, try first part */
---            if ((alloc->result = find_reserved_free_area( start, preload_reserve_start, alloc->size,
---                                                          alloc->top_down )))
+-+        if (intersect_end - intersect_start >= area->size)
+++        alloc_start = ROUND_ADDR( intersect_end - area->size, granularity_mask );
+++        if (alloc_start >= intersect_start)
+ +        {
+-+            alloc_start = ROUND_ADDR( intersect_end - area->size, granularity_mask );
 -+            if ((area->result = anon_mmap_fixed( alloc_start, area->size,
 -+                    area->unix_prot, 0 )) != alloc_start)
-++        {
 ++            if ((area->result = wine_anon_mmap( alloc_start, area->size, area->unix_prot, MAP_FIXED )) != alloc_start)
  +                ERR("Could not map in reserved area, alloc_start %p, size %p.\n",
  +                        alloc_start, (void *)area->size);
  +            return 1;
-@@ -297,14 +283,12 @@ index 924dff973ce..e7dfc516538 100644
- +        {
+@@ -287,24 +277,18 @@ index 4ca033b0e19..5bb9511be6d 100644
+ +        intersect_end = min((char *)end, area->map_area_end);
+ +
+ +        assert(ROUND_ADDR(intersect_start, granularity_mask) == intersect_start);
+-+        assert(ROUND_ADDR(intersect_end + granularity_mask, granularity_mask) == intersect_end);
+-+        assert(ROUND_ADDR(area->map_area_start, granularity_mask) == area->map_area_start);
+++        assert(ROUND_ADDR(intersect_end + granularity_mask - 1, granularity_mask) == intersect_end);
+ +
+ +        if (intersect_start - area->map_area_start >= area->size)
+-         {
+--            /* range is split in two by the preloader reservation, try first part */
+--            if ((alloc->result = find_reserved_free_area( start, preload_reserve_start, alloc->size,
+--                                                          alloc->top_down )))
+++        {
  +            if ((area->result = try_map_free_area( area->map_area_start, intersect_start, area->step,
  +                    area->map_area_start, area->size, area->unix_prot )))
 -                 return 1;
@@ -6838,7 +6867,7 @@ index 55309fee..19d09a62 100644
  +                    != intersect_start)
  +                ERR("Could not map in reserved area.\n");
  +            return 1;
-@@ -312,69 +296,66 @@ index 924dff973ce..e7dfc516538 100644
+@@ -312,69 +296,66 @@ index 4ca033b0e19..5bb9511be6d 100644
  +        area->map_area_start = intersect_end;
  +        if (area->map_area_end - area->map_area_start < area->size)
  +            return 1;
@@ -6928,7 +6957,7 @@ index 55309fee..19d09a62 100644
  +    char *base, *end;
  +    int ranges_inc;
  +
-@@ -393,14 +374,14 @@ index 924dff973ce..e7dfc516538 100644
+@@ -393,14 +374,14 @@ index 4ca033b0e19..5bb9511be6d 100644
  +        ranges_inc = 1;
  +    }
  +
@@ -6946,7 +6975,7 @@ index 55309fee..19d09a62 100644
  +
  +    for (range = ranges_start; range != ranges_end; range += ranges_inc)
  +    {
-@@ -409,35 +390,28 @@ index 924dff973ce..e7dfc516538 100644
+@@ -409,35 +390,28 @@ index 4ca033b0e19..5bb9511be6d 100644
  +
  +        TRACE("range %p-%p.\n", base, end);
  +
@@ -6991,11 +7020,11 @@ index 55309fee..19d09a62 100644
  +            return area.result;
  +    }
  +    return NULL;
-@@ -446,31 +420,30 @@ index 924dff973ce..e7dfc516538 100644
+@@ -446,31 +420,30 @@ index 4ca033b0e19..5bb9511be6d 100644
   /***********************************************************************
    *           map_fixed_area
    *
--@@ -1765,48 +1786,11 @@ static NTSTATUS map_view( struct file_view **view_ret, void *base, size_t size,
+-@@ -1738,48 +1760,11 @@ static NTSTATUS map_view( struct file_view **view_ret, void *base, size_t size,
 -         if (status != STATUS_SUCCESS) return status;
 -         ptr = base;
 -     }
@@ -7047,7 +7076,7 @@ index 55309fee..19d09a62 100644
  -        {
  -            if (!(ptr = map_free_area( address_space_start, alloc.limit, size,
  -                                       top_down, get_unix_prot(vprot) )))
-@@ -479,33 +452,17 @@ index 924dff973ce..e7dfc516538 100644
+@@ -479,33 +452,17 @@ index 4ca033b0e19..5bb9511be6d 100644
  -            goto done;
  -        }
  -
@@ -7070,7 +7099,7 @@ index 55309fee..19d09a62 100644
 -     status = create_view( view_ret, ptr, size, vprot );
 -     if (status != STATUS_SUCCESS) unmap_area( ptr, size );
 -     return status;
--@@ -2453,6 +2437,7 @@ void virtual_init(void)
+-@@ -2409,6 +2394,7 @@ void virtual_init(void)
 +         view_size = size + granularity_mask + 1;
 + 
 +         for (;;)
@@ -16678,7 +16707,7 @@ index e7986a4e..31fb734d 100644
 +2.24.0
  
 diff --git a/patches/patchinstall.sh b/patches/patchinstall.sh
-index 0473ffd3..493567b9 100755
+index db3860ea..60a7ddb5 100755
 --- a/patches/patchinstall.sh
 +++ b/patches/patchinstall.sh
 @@ -34,6 +34,7 @@ usage()
@@ -19189,11 +19218,11 @@ index 769f1f3c..703c49ba 100644
   static struct object_type *mapping_get_type( struct object *obj )
   {
 diff --git a/patches/server-Object_Types/0008-ntdll-Set-TypeIndex-for-ObjectTypeInformation-in-NtQ.patch b/patches/server-Object_Types/0008-ntdll-Set-TypeIndex-for-ObjectTypeInformation-in-NtQ.patch
-index a571992a..feb7ddfc 100644
+index 82ca4283..feb7ddfc 100644
 --- a/patches/server-Object_Types/0008-ntdll-Set-TypeIndex-for-ObjectTypeInformation-in-NtQ.patch
 +++ b/patches/server-Object_Types/0008-ntdll-Set-TypeIndex-for-ObjectTypeInformation-in-NtQ.patch
 @@ -1,32 +1,31 @@
--From 64928073fc2e463fa9f637a9a1bcddfaeb5a55c6 Mon Sep 17 00:00:00 2001
+-From dfb9f91425d239620669215e9c914fbb1288dc4e Mon Sep 17 00:00:00 2001
 +From 1e3e93483b223c6e0e9d712fff4a8874c503c973 Mon Sep 17 00:00:00 2001
  From: =?UTF-8?q?Michael=20M=C3=BCller?= <michael@fds-team.de>
  Date: Wed, 8 Mar 2017 17:41:11 +0100
@@ -19211,10 +19240,10 @@ index a571992a..feb7ddfc 100644
   3 files changed, 9 insertions(+), 1 deletion(-)
  
 -diff --git a/dlls/ntdll/unix/file.c b/dlls/ntdll/unix/file.c
--index e18daaea5ca..ece09c12f77 100644
+-index 93678aa70e5..d72a8370500 100644
 ---- a/dlls/ntdll/unix/file.c
 -+++ b/dlls/ntdll/unix/file.c
--@@ -6589,6 +6589,10 @@ NTSTATUS WINAPI NtQueryObject( HANDLE handle, OBJECT_INFORMATION_CLASS info_clas
+-@@ -7554,6 +7554,10 @@ NTSTATUS WINAPI NtQueryObject( HANDLE handle, OBJECT_INFORMATION_CLASS info_clas
 -                     p->TypeName.Buffer[res / sizeof(WCHAR)] = 0;
 -                     if (used_len) *used_len = sizeof(*p) + p->TypeName.MaximumLength;
 +diff --git a/dlls/ntdll/om.c b/dlls/ntdll/om.c
@@ -19239,12 +19268,12 @@ index a571992a..feb7ddfc 100644
 -         SERVER_END_REQ;
 +             SERVER_END_REQ;
  diff --git a/server/directory.c b/server/directory.c
--index 65357e7f2e3..c752a652d49 100644
+-index 65357e7f2e3..99eafb9c53a 100644
 +index b4f53e2edf..59c8194d09 100644
  --- a/server/directory.c
  +++ b/server/directory.c
  @@ -44,6 +44,7 @@
-@@ -37,17 +36,17 @@ index 65357e7f2e3..c752a652d49 100644
+@@ -37,17 +36,17 @@ index 65357e7f2e3..99eafb9c53a 100644
   };
   
   static void object_type_dump( struct object *obj, int verbose );
@@ -19256,7 +19285,8 @@ index a571992a..feb7ddfc 100644
 +             assert( object_type_count < sizeof(object_type_list)/sizeof(object_type_list[0]) );
  -            object_type_list[ object_type_count++ ] = (struct object_type *)grab_object( type );
  +            type->index = object_type_count++;
- +            object_type_list[ type->index ] = (struct object_type *)grab_object( type );
+-+            object_type_list[ type->index ] = (struct object_type *)type;
+++            object_type_list[ type->index ] = (struct object_type *)grab_object( type );
 +             make_object_static( &type->obj );
           }
           clear_error();
@@ -19266,24 +19296,24 @@ index a571992a..feb7ddfc 100644
       {
           if ((name = get_object_name( &type->obj, &reply->total )))
               set_reply_data( name, min( reply->total, get_reply_max_size() ) );
-@@ -56,10 +55,10 @@ index 65357e7f2e3..c752a652d49 100644
+@@ -56,10 +55,10 @@ index 65357e7f2e3..99eafb9c53a 100644
       }
       release_object( obj );
  diff --git a/server/protocol.def b/server/protocol.def
--index 9bc4ba12042..b52321ed519 100644
+-index 8956e7175bf..9102f557e38 100644
 +index 98c4c58a4e..d6847f8d55 100644
  --- a/server/protocol.def
  +++ b/server/protocol.def
--@@ -3334,6 +3334,7 @@ struct handle_info
+-@@ -3319,6 +3319,7 @@ struct handle_info
 +@@ -3543,6 +3543,7 @@ struct handle_info
   @REQ(get_object_type)
       obj_handle_t   handle;        /* handle to the object */
   @REPLY
-@@ -68,5 +67,5 @@ index 9bc4ba12042..b52321ed519 100644
+@@ -68,5 +67,5 @@ index 8956e7175bf..9102f557e38 100644
       VARARG(type,unicode_str);     /* type name */
   @END
  -- 
--2.28.0
+-2.26.2
 +2.11.0
  
 diff --git a/patches/server-Object_Types/0009-ntdll-Set-object-type-for-System-Extended-HandleInfo.patch b/patches/server-Object_Types/0009-ntdll-Set-object-type-for-System-Extended-HandleInfo.patch
@@ -24213,6 +24243,122 @@ index 4ad9fee8..143739f7 100644
  -- 
 -2.28.0
 +2.22.0
+ 
+diff --git a/patches/ws2_32-Connect_Time/0001-ws2_32-Implement-returning-the-proper-time-with-SO_C.patch b/patches/ws2_32-Connect_Time/0001-ws2_32-Implement-returning-the-proper-time-with-SO_C.patch
+index 1db4366c..c59a54f9 100644
+--- a/patches/ws2_32-Connect_Time/0001-ws2_32-Implement-returning-the-proper-time-with-SO_C.patch
++++ b/patches/ws2_32-Connect_Time/0001-ws2_32-Implement-returning-the-proper-time-with-SO_C.patch
+@@ -1,4 +1,4 @@
+-From 02727b15297b66c66d622cc28dfa5f6cf1b044ac Mon Sep 17 00:00:00 2001
++From 750e6e7c7d5d3432136fc1560ffcf615ed5be03f Mon Sep 17 00:00:00 2001
+ From: Sebastian Lackner <sebastian@fds-team.de>
+ Date: Thu, 20 Nov 2014 13:27:24 +0100
+ Subject: [PATCH] ws2_32: Implement returning the proper time with
+@@ -10,16 +10,16 @@ To avoid calculations on the client-side, the server sends the connect time as r
+ Needs tools/make_requests.
+ ---
+  dlls/ws2_32/socket.c     | 21 ++++++++++++++++-----
+- dlls/ws2_32/tests/sock.c | 20 ++++++++++++++++++++
++ dlls/ws2_32/tests/sock.c | 19 +++++++++++++++++++
+  server/protocol.def      |  1 +
+  server/sock.c            |  1 +
+- 4 files changed, 38 insertions(+), 5 deletions(-)
++ 4 files changed, 37 insertions(+), 5 deletions(-)
+ 
+ diff --git a/dlls/ws2_32/socket.c b/dlls/ws2_32/socket.c
+-index 4568e7f1bae..60c243d14f0 100644
++index c36b7dc23dd..59dff66e37f 100644
+ --- a/dlls/ws2_32/socket.c
+ +++ b/dlls/ws2_32/socket.c
+-@@ -1344,6 +1344,21 @@ static DWORD sock_is_blocking(SOCKET s, BOOL *ret)
++@@ -1175,6 +1175,21 @@ static DWORD sock_is_blocking(SOCKET s, BOOL *ret)
+      return err;
+  }
+  
+@@ -41,7 +41,7 @@ index 4568e7f1bae..60c243d14f0 100644
+  static unsigned int _get_sock_mask(SOCKET s)
+  {
+      unsigned int ret;
+-@@ -3969,7 +3984,6 @@ INT WINAPI WS_getsockopt(SOCKET s, INT level,
++@@ -3962,7 +3977,6 @@ INT WINAPI WS_getsockopt(SOCKET s, INT level,
+  
+          case WS_SO_CONNECT_TIME:
+          {
+@@ -49,7 +49,7 @@ index 4568e7f1bae..60c243d14f0 100644
+              struct WS_sockaddr addr;
+              int len = sizeof(addr);
+  
+-@@ -3981,10 +3995,7 @@ INT WINAPI WS_getsockopt(SOCKET s, INT level,
++@@ -3974,10 +3988,7 @@ INT WINAPI WS_getsockopt(SOCKET s, INT level,
+              if (WS_getpeername(s, &addr, &len) == SOCKET_ERROR)
+                  *(DWORD *)optval = ~0u;
+              else
+@@ -62,10 +62,10 @@ index 4568e7f1bae..60c243d14f0 100644
+              return ret;
+          }
+ diff --git a/dlls/ws2_32/tests/sock.c b/dlls/ws2_32/tests/sock.c
+-index ba03e16ebb1..134433c4b6d 100644
++index b32d1c053df..60360bacc21 100644
+ --- a/dlls/ws2_32/tests/sock.c
+ +++ b/dlls/ws2_32/tests/sock.c
+-@@ -4801,11 +4801,15 @@ static void test_send(void)
++@@ -5385,6 +5385,8 @@ static void test_send(void)
+      OVERLAPPED ov;
+      BOOL bret;
+      DWORD id, bytes_sent, dwRet;
+@@ -74,14 +74,15 @@ index ba03e16ebb1..134433c4b6d 100644
+  
+      memset(&ov, 0, sizeof(ov));
+  
+-     tcp_socketpair(&src, &dst);
+- 
++@@ -5393,6 +5395,7 @@ static void test_send(void)
++         ok(0, "creating socket pair failed, skipping test\n");
++         return;
++     }
+ +    expected_time = GetTickCount();
+-+
++ 
+      set_blocking(dst, FALSE);
+      /* force disable buffering so we can get a pending overlapped request */
+-     ret = setsockopt(dst, SOL_SOCKET, SO_SNDBUF, (char *) &zero, sizeof(zero));
+-@@ -4878,6 +4882,22 @@ static void test_send(void)
++@@ -5479,6 +5482,22 @@ static void test_send(void)
+      ok(ret == SOCKET_ERROR && WSAGetLastError() == ERROR_IO_PENDING,
+         "Failed to start overlapped send %d - %d\n", ret, WSAGetLastError());
+  
+@@ -105,10 +106,10 @@ index ba03e16ebb1..134433c4b6d 100644
+      if (src != INVALID_SOCKET)
+          closesocket(src);
+ diff --git a/server/protocol.def b/server/protocol.def
+-index 8360b2611a1..f5f505d69fb 100644
++index af959ebdf82..8afe8e11435 100644
+ --- a/server/protocol.def
+ +++ b/server/protocol.def
+-@@ -1433,6 +1433,7 @@ enum server_fd_type
++@@ -1399,6 +1399,7 @@ enum server_fd_type
+      int family;                 /* family, see socket manpage */
+      int type;                   /* type, see socket manpage */
+      int protocol;               /* protocol, see socket manpage */
+@@ -117,10 +118,10 @@ index 8360b2611a1..f5f505d69fb 100644
+  
+  
+ diff --git a/server/sock.c b/server/sock.c
+-index 4f97fe72080..07e1cf3a2ca 100644
++index 040fa3d14b1..48ef19b4fbd 100644
+ --- a/server/sock.c
+ +++ b/server/sock.c
+-@@ -1565,6 +1565,7 @@ DECL_HANDLER(get_socket_info)
++@@ -1331,6 +1331,7 @@ DECL_HANDLER(get_socket_info)
+      reply->family   = sock->family;
+      reply->type     = sock->type;
+      reply->protocol = sock->proto;
+@@ -129,5 +130,5 @@ index 4f97fe72080..07e1cf3a2ca 100644
+      release_object( &sock->obj );
+  }
+ -- 
+-2.28.0
++2.19.1
  
 diff --git a/patches/ws2_32-TransmitFile/definition b/patches/ws2_32-TransmitFile/definition
 index a2a8db04..f54cc82d 100644
