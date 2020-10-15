@@ -1337,10 +1337,12 @@ EOM
 	    _patchname='FS_bypass_compositor.patch' && _patchmsg="Applied Fullscreen compositor bypass patch" && nonuser_patcher
 	  fi
 	  if [ "$_use_staging" = "true" ]; then
-	    if git merge-base --is-ancestor 1e074c39f635c585595e9f3ece99aa290a7f9cf8 HEAD; then
+	    if git merge-base --is-ancestor af3d292343034b87403b1c8738e29bd3479fe87e HEAD; then
 	      _patchname='valve_proton_fullscreen_hack-staging.patch' && _patchmsg="Applied Proton fullscreen hack patch (staging)" && nonuser_patcher
 	    else
-	      if git merge-base --is-ancestor 314cd9cdd542db658ce7a01ef0a7621fc2d9d335 HEAD; then
+	      if git merge-base --is-ancestor 1e074c39f635c585595e9f3ece99aa290a7f9cf8 HEAD; then
+	        _lastcommit="af3d292"
+	      elif git merge-base --is-ancestor 314cd9cdd542db658ce7a01ef0a7621fc2d9d335 HEAD; then
 	        _lastcommit="1e074c3"
 	      elif git merge-base --is-ancestor 5dd03cbc8f5cc8fa349d1ce0f155139094eff56c HEAD; then
 	        _lastcommit="314cd9c"
@@ -1384,8 +1386,10 @@ EOM
 	      _patchname="valve_proton_fullscreen_hack-staging-$_lastcommit.patch" && _patchmsg="Applied Proton fullscreen hack patch ($_lastcommit)" && nonuser_patcher
 	    fi
 	  else
-	    if git merge-base --is-ancestor 1e074c39f635c585595e9f3ece99aa290a7f9cf8 HEAD; then
+	    if git merge-base --is-ancestor af3d292343034b87403b1c8738e29bd3479fe87e HEAD; then
 	      _patchname='valve_proton_fullscreen_hack.patch' && _patchmsg="Applied Proton fullscreen hack patch (mainline)" && nonuser_patcher
+	    elif git merge-base --is-ancestor 1e074c39f635c585595e9f3ece99aa290a7f9cf8 HEAD; then
+	      _patchname='valve_proton_fullscreen_hack-af3d292.patch' && _patchmsg="Applied Proton fullscreen hack patch (mainline)" && nonuser_patcher
 	    elif git merge-base --is-ancestor 314cd9cdd542db658ce7a01ef0a7621fc2d9d335 HEAD; then
 	      _patchname='valve_proton_fullscreen_hack-1e074c3.patch' && _patchmsg="Applied Proton fullscreen hack patch (mainline)" && nonuser_patcher
 	    elif git merge-base --is-ancestor 5dd03cbc8f5cc8fa349d1ce0f155139094eff56c HEAD; then
@@ -1873,14 +1877,16 @@ EOM
 	  _patchname='proton_fs_hack_integer_scaling.patch' && _patchmsg="Enable Proton fs hack integer scaling" && nonuser_patcher
 	fi
 	if [ "$_update_winevulkan" = "true" ] && git merge-base --is-ancestor 7e736b5903d3d078bbf7bb6a509536a942f6b9a0 HEAD; then
-	  if git merge-base --is-ancestor 1e074c39f635c585595e9f3ece99aa290a7f9cf8 HEAD; then
+	  if git merge-base --is-ancestor bff6bc6a79ffc3a915219a6dfe64c9bcabaaeceb HEAD; then
 	    if [ "$_proton_fs_hack" = "true" ]; then
 	      _patchname='proton-winevulkan.patch' && _patchmsg="Using Proton winevulkan patches" && nonuser_patcher
 	    else
 	      _patchname='proton-winevulkan-nofshack.patch' && _patchmsg="Using Proton winevulkan patches (nofshack)" && nonuser_patcher
 	    fi
 	  else
-	    if git merge-base --is-ancestor 8bd62231c3ab222c07063cb340e26c3c76ff4229 HEAD; then
+	    if git merge-base --is-ancestor 1e074c39f635c585595e9f3ece99aa290a7f9cf8 HEAD; then
+	      _lastcommit="bff6bc6"
+	    elif git merge-base --is-ancestor 8bd62231c3ab222c07063cb340e26c3c76ff4229 HEAD; then
 	      _lastcommit="1e074c3"
 	    elif git merge-base --is-ancestor 380b7f28253c048d04c1fbd0cfbc7e804bb1b0e1 HEAD; then
 	      _lastcommit="8bd6223"
