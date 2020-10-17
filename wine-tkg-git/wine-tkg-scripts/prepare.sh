@@ -1864,6 +1864,9 @@ EOM
 	    else
 	      _patchname='proton-vr-c736321.patch' && _patchmsg="Enable Proton vr-related wined3d additions (<c736321)" && nonuser_patcher
 	    fi
+	  elif [ "$_steamvr_support" = "true" ] && [ "$_proton_fs_hack" != "true" ]; then
+	    _steamvr_support="false"
+	    echo "SteamVR support disabled as it requires proton_fs_hack" >> "$_where"/last_build_config.log
 	  fi
 	fi
 
@@ -2004,14 +2007,16 @@ _polish() {
 
 	echo "" >> "$_where"/last_build_config.log
 
-	if [ -z "$_localbuild" ] && [ "$_untag" != "true" ]; then
-	  if [ "$_use_staging" = "true" ] && [ "$_LOCAL_PRESET" != "staging" ]; then
-	    _patchname='wine-tkg-staging.patch' && _patchmsg="Please don't report bugs about this wine build on winehq.org and use https://github.com/Frogging-Family/wine-tkg-git/issues instead." && nonuser_patcher
-	  elif [ "$_use_staging" != "true" ] && [ "$_LOCAL_PRESET" != "mainline" ]; then
-	    if git merge-base --is-ancestor c7760ce7a247eeb9f15b51d0ec68ca0961efc0b0 HEAD; then
-	      _patchname='wine-tkg.patch' && _patchmsg="Please don't report bugs about this wine build on winehq.org and use https://github.com/Frogging-Family/wine-tkg-git/issues instead." && nonuser_patcher
-	    else
-	      _patchname='wine-tkg-c7760ce.patch' && _patchmsg="Please don't report bugs about this wine build on winehq.org and use https://github.com/Frogging-Family/wine-tkg-git/issues instead." && nonuser_patcher
+	if [ -z "$_localbuild" ]; then
+	  if [ "$_untag" != "true" ]; then
+	    if [ "$_use_staging" = "true" ] && [ "$_LOCAL_PRESET" != "staging" ]; then
+	      _patchname='wine-tkg-staging.patch' && _patchmsg="Please don't report bugs about this wine build on winehq.org and use https://github.com/Frogging-Family/wine-tkg-git/issues instead." && nonuser_patcher
+	    elif [ "$_use_staging" != "true" ] && [ "$_LOCAL_PRESET" != "mainline" ]; then
+	      if git merge-base --is-ancestor c7760ce7a247eeb9f15b51d0ec68ca0961efc0b0 HEAD; then
+	        _patchname='wine-tkg.patch' && _patchmsg="Please don't report bugs about this wine build on winehq.org and use https://github.com/Frogging-Family/wine-tkg-git/issues instead." && nonuser_patcher
+	      else
+	        _patchname='wine-tkg-c7760ce.patch' && _patchmsg="Please don't report bugs about this wine build on winehq.org and use https://github.com/Frogging-Family/wine-tkg-git/issues instead." && nonuser_patcher
+	      fi
 	    fi
 	  fi
 	else
