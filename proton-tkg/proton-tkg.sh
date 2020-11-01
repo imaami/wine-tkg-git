@@ -52,7 +52,8 @@ else
   elif [ -e "$HOME/.steam/steam.sh" ]; then # typical on Ubuntu
     _steampath="$HOME/.steam"
   else
-    read -rp "Your Steam install wasn't found! Do you want to continue anyway? N/y: " _no_steampath;
+    #read -rp "Your Steam install wasn't found! Do you want to continue anyway? N/y: " _no_steampath;
+    _no_steampath=y
     if [ "$_no_steampath" != "y" ]; then
       exit
     fi
@@ -97,8 +98,8 @@ function build_vrclient {
   cd ..
 
   export WINEMAKERFLAGS="--nosource-fix --nolower-include --nodlls --nomsvcrt --dll -I$_nowhere/proton_dist_tmp/include/wine/windows/ -I$_nowhere/proton_dist_tmp/include/ -I$_nowhere/proton_dist_tmp/include/wine/"
-  export CFLAGS="-O2 -g"
-  export CXXFLAGS="-Wno-attributes -std=c++0x -O2 -g"
+  export CFLAGS="-O3 -ftree-vectorize -march=native -mtune=native"
+  export CXXFLAGS="-Wno-attributes -std=c++0x -O3 -ftree-vectorize -march=native -mtune=native"
   PATH="$_nowhere"/proton_dist_tmp/bin:$PATH
   if [ "$_standard_dlopen" = "true" ] && [ "$_proton_branch" != "proton_5.13" ]; then
     patch -Np1 < "$_nowhere/proton_template/vrclient-remove-library.h-dep.patch" || true
@@ -141,8 +142,8 @@ function build_lsteamclient {
   cd "$_nowhere"/Proton
   source "$_nowhere/proton_tkg_token"
   export WINEMAKERFLAGS="--nosource-fix --nolower-include --nodlls --nomsvcrt --dll -I$_nowhere/proton_dist_tmp/include/wine/windows/ -I$_nowhere/proton_dist_tmp/include/ -I$_wine_tkg_git_path/src/$_winesrcdir/include/"
-  export CFLAGS="-O2 -g"
-  export CXXFLAGS="-fpermissive -Wno-attributes -O2 -g"
+  export CFLAGS="-O3 -ftree-vectorize -march=native -mtune=native"
+  export CXXFLAGS="-fpermissive -Wno-attributes -O3 -ftree-vectorize -march=native -mtune=native"
   export PATH="$_nowhere"/proton_dist_tmp/bin:$PATH
   if [[ "$_proton_branch" != proton_3.* ]] && [[ "$_proton_branch" != proton_4.* ]]; then
     _cxx_addon="-std=gnu++11"
