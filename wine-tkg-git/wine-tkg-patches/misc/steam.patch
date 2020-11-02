@@ -1,8 +1,22 @@
+From c6eb20e85dbd6d03e73c346305a31bc7aaa0a2c0 Mon Sep 17 00:00:00 2001
+From: Esme Povirk <esme@codeweavers.com>
+Date: Tue, 13 Oct 2015 14:21:00 -0500
+Subject: [PATCH] hack for CrossOver
+
+Patch rebased by Tk-Glitch <ti3nou@gmail.com>, commit
+metadata reconstructed from file attachment details
+by Juuso Alasuutari <juuso.alasuutari@gmail.com>.
+
+Wine-Bug: https://bugs.winehq.org/show_bug.cgi?id=39403
+---
+ dlls/kernelbase/process.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
 diff --git a/dlls/kernelbase/process.c b/dlls/kernelbase/process.c
-index 6e7b23e..63eda34 100644
+index 57f0721f397..a52dfd9d9ec 100644
 --- a/dlls/kernelbase/process.c
 +++ b/dlls/kernelbase/process.c
-@@ -440,6 +440,33 @@ BOOL WINAPI DECLSPEC_HOTPATCH CreateProcessInternalW( HANDLE token, const WCHAR *app_name, WCHAR *cmd_line,
+@@ -525,6 +525,33 @@ BOOL WINAPI DECLSPEC_HOTPATCH CreateProcessInternalW( HANDLE token, const WCHAR
          app_name = name;
      }
  
@@ -36,3 +50,6 @@ index 6e7b23e..63eda34 100644
      /* Warn if unsupported features are used */
  
      if (flags & (IDLE_PRIORITY_CLASS | HIGH_PRIORITY_CLASS | REALTIME_PRIORITY_CLASS |
+-- 
+2.29.1
+

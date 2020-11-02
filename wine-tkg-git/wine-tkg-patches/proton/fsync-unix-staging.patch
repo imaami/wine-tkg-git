@@ -1,8 +1,64 @@
 From 1d3dadfd7707ac176b67b50a0dc573f799778836 Mon Sep 17 00:00:00 2001
 From: Tk-Glitch <ti3nou@gmail.com>
 Date: Fri, 16 Oct 2020 20:53:31 +0200
-Subject: Fsync rebased 5.13+ staging
+Subject: [PATCH] Fsync rebased 5.13+ staging
 
+---
+ dlls/ntdll/Makefile.in         |    1 +
+ dlls/ntdll/unix/esync.c        |    7 +-
+ dlls/ntdll/unix/fsync.c        | 1269 ++++++++++++++++++++++++++++++++
+ dlls/ntdll/unix/fsync.h        |   49 ++
+ dlls/ntdll/unix/loader.c       |    2 +
+ dlls/ntdll/unix/server.c       |    4 +
+ dlls/ntdll/unix/sync.c         |   72 +-
+ dlls/ntdll/unix/unix_private.h |    1 +
+ dlls/ntdll/unix/virtual.c      |    1 +
+ server/Makefile.in             |    1 +
+ server/async.c                 |    2 +
+ server/atom.c                  |    1 +
+ server/change.c                |    1 +
+ server/clipboard.c             |    1 +
+ server/completion.c            |    1 +
+ server/console.c               |   18 +
+ server/debugger.c              |    2 +
+ server/device.c                |   23 +
+ server/directory.c             |    2 +
+ server/esync.c                 |    4 +-
+ server/event.c                 |   37 +
+ server/fd.c                    |   27 +
+ server/file.c                  |    1 +
+ server/file.h                  |    1 +
+ server/fsync.c                 |  527 +++++++++++++
+ server/fsync.h                 |   34 +
+ server/handle.c                |    1 +
+ server/hook.c                  |    1 +
+ server/mailslot.c              |    4 +
+ server/main.c                  |    7 +
+ server/mapping.c               |    3 +
+ server/mutex.c                 |    1 +
+ server/named_pipe.c            |    5 +
+ server/object.h                |    2 +
+ server/process.c               |   16 +
+ server/process.h               |    1 +
+ server/protocol.def            |   54 ++
+ server/queue.c                 |   42 ++
+ server/registry.c              |    1 +
+ server/request.c               |    1 +
+ server/semaphore.c             |    1 +
+ server/serial.c                |    1 +
+ server/signal.c                |    1 +
+ server/sock.c                  |    3 +
+ server/symlink.c               |    1 +
+ server/thread.c                |   31 +
+ server/thread.h                |    2 +
+ server/timer.c                 |   17 +
+ server/token.c                 |    1 +
+ server/winstation.c            |    2 +
+ 50 files changed, 2283 insertions(+), 5 deletions(-)
+ create mode 100644 dlls/ntdll/unix/fsync.c
+ create mode 100644 dlls/ntdll/unix/fsync.h
+ create mode 100644 server/fsync.c
+ create mode 100644 server/fsync.h
 
 diff --git a/dlls/ntdll/Makefile.in b/dlls/ntdll/Makefile.in
 index c96a62ae006..a9be561d87a 100644
@@ -1428,7 +1484,7 @@ index 34d4c80eee5..c48a6339fee 100644
          esync_close( handle );
  
 diff --git a/dlls/ntdll/unix/sync.c b/dlls/ntdll/unix/sync.c
-index 051c672bd12..d8a8eb526a1 100644
+index 18d87dd2739..cf03631e09c 100644
 --- a/dlls/ntdll/unix/sync.c
 +++ b/dlls/ntdll/unix/sync.c
 @@ -73,6 +73,7 @@
@@ -1642,10 +1698,10 @@ index e7033932bcb..a2f485d892f 100644
  
  C_ASSERT( sizeof(struct ntdll_thread_data) <= sizeof(((TEB *)0)->GdiTebBatch) );
 diff --git a/dlls/ntdll/unix/virtual.c b/dlls/ntdll/unix/virtual.c
-index bd89649e769..608c83b579c 100644
+index 1385c6906dc..18b9e43fea7 100644
 --- a/dlls/ntdll/unix/virtual.c
 +++ b/dlls/ntdll/unix/virtual.c
-@@ -2683,6 +2683,7 @@ static void init_teb( TEB *teb, PEB *peb )
+@@ -2675,6 +2675,7 @@ static void init_teb( TEB *teb, PEB *peb )
      thread_data->wait_fd[0] = -1;
      thread_data->wait_fd[1] = -1;
      thread_data->esync_apc_fd = -1;
@@ -1666,7 +1722,7 @@ index 8bd612b4728..6dc5c465e52 100644
  	hook.c \
  	mach.c \
 diff --git a/server/async.c b/server/async.c
-index 1b4f86a1b8b..ceff9c75c27 100644
+index bdd68663ab9..4655c41763c 100644
 --- a/server/async.c
 +++ b/server/async.c
 @@ -71,6 +71,7 @@ static const struct object_ops async_ops =
@@ -1734,7 +1790,7 @@ index ef66260c991..2149d0bbf32 100644
      no_signal,                 /* signal */
      no_get_fd,                 /* get_fd */
 diff --git a/server/console.c b/server/console.c
-index 78635f3fae1..824b930bba0 100644
+index 99831b299b8..ffa973b4072 100644
 --- a/server/console.c
 +++ b/server/console.c
 @@ -43,6 +43,7 @@
@@ -1753,7 +1809,7 @@ index 78635f3fae1..824b930bba0 100644
      no_satisfied,                     /* satisfied */
      no_signal,                        /* signal */
      console_input_get_fd,             /* get_fd */
-@@ -136,6 +138,7 @@ struct console_server
+@@ -136,12 +138,14 @@ struct console_server
      int                   term_fd;     /* UNIX terminal fd */
      struct termios        termios;     /* original termios */
      int                   esync_fd;
@@ -1761,7 +1817,6 @@ index 78635f3fae1..824b930bba0 100644
  };
  
  static void console_server_dump( struct object *obj, int verbose );
-@@ -146,6 +149,7 @@ static struct object *console_server_lookup_name( struct object *obj, struct uni
  static void console_server_destroy( struct object *obj );
  static int console_server_signaled( struct object *obj, struct wait_queue_entry *entry );
  static int console_server_get_esync_fd( struct object *obj, enum esync_type *type );
@@ -1801,7 +1856,7 @@ index 78635f3fae1..824b930bba0 100644
      no_satisfied,                     /* satisfied */
      no_signal,                        /* signal */
      console_connection_get_fd,        /* get_fd */
-@@ -774,6 +782,13 @@ static int console_server_get_esync_fd( struct object *obj, enum esync_type *typ
+@@ -776,6 +784,13 @@ static int console_server_get_esync_fd( struct object *obj, enum esync_type *typ
      return server->esync_fd;
  }
  
@@ -1815,9 +1870,9 @@ index 78635f3fae1..824b930bba0 100644
  static struct fd *console_server_get_fd( struct object* obj )
  {
      struct console_server *server = (struct console_server*)obj;
-@@ -806,6 +821,9 @@ static struct object *create_console_server( void )
-     }
+@@ -808,6 +823,9 @@ static struct object *create_console_server( void )
      allow_fd_caching(server->fd);
+     server->esync_fd = -1;
  
 +    if (do_fsync())
 +        server->fsync_idx = fsync_alloc_shm( 0, 0 );
@@ -1968,7 +2023,7 @@ index 007ec1002ac..62f2e50916f 100644
      no_signal,                    /* signal */
      no_get_fd,                    /* get_fd */
 diff --git a/server/esync.c b/server/esync.c
-index 5c641fdbe01..6395ba4378c 100644
+index d79be851c8f..e975b1e6c2b 100644
 --- a/server/esync.c
 +++ b/server/esync.c
 @@ -44,6 +44,7 @@
@@ -2235,10 +2290,10 @@ index bbc2462163d..c558229c3c8 100644
  unsigned int default_fd_map_access( struct object *obj, unsigned int access )
  {
 diff --git a/server/file.c b/server/file.c
-index 49c4ba32b42..829c8685d63 100644
+index 443a0068eff..108bcc9b221 100644
 --- a/server/file.c
 +++ b/server/file.c
-@@ -112,6 +112,7 @@ static const struct object_ops file_ops =
+@@ -116,6 +116,7 @@ static const struct object_ops file_ops =
      remove_queue,                 /* remove_queue */
      default_fd_signaled,          /* signaled */
      NULL,                         /* get_esync_fd */
@@ -2247,7 +2302,7 @@ index 49c4ba32b42..829c8685d63 100644
      no_signal,                    /* signal */
      file_get_fd,                  /* get_fd */
 diff --git a/server/file.h b/server/file.h
-index cae0ac1e395..ed030af8d8f 100644
+index 9139244fa66..4796308931c 100644
 --- a/server/file.h
 +++ b/server/file.h
 @@ -103,6 +103,7 @@ extern char *dup_fd_name( struct fd *root, const char *name );
@@ -2832,7 +2887,7 @@ index 00000000000..a91939b7f0a
 +extern void fsync_reset_event( struct fsync *fsync );
 +extern void fsync_abandon_mutexes( struct thread *thread );
 diff --git a/server/handle.c b/server/handle.c
-index cb5628b7e06..ff44446acc9 100644
+index d768a5d59c6..f2ad6edee2d 100644
 --- a/server/handle.c
 +++ b/server/handle.c
 @@ -124,6 +124,7 @@ static const struct object_ops handle_table_ops =
@@ -3166,7 +3221,7 @@ index 2a8662354f6..381bd8d8218 100644
 +    unsigned int shm_idx;
 +@END
 diff --git a/server/queue.c b/server/queue.c
-index a78748b96ca..dccf43197cf 100644
+index 1ba34defd17..c7c89d07490 100644
 --- a/server/queue.c
 +++ b/server/queue.c
 @@ -44,6 +44,7 @@
@@ -3304,7 +3359,7 @@ index 996bff5ef6d..50b600b4853 100644
      no_signal,               /* signal */
      no_get_fd,               /* get_fd */
 diff --git a/server/request.c b/server/request.c
-index 20b0ec309f3..9fd08139375 100644
+index f9a6fd099cb..47413bb77c5 100644
 --- a/server/request.c
 +++ b/server/request.c
 @@ -97,6 +97,7 @@ static const struct object_ops master_socket_ops =
@@ -3352,10 +3407,10 @@ index b6d6dcfc4b6..f5ac61b6975 100644
      no_signal,                /* signal */
      no_get_fd,                /* get_fd */
 diff --git a/server/sock.c b/server/sock.c
-index c2dfa8fb8ce..080efc98942 100644
+index 4ef46866fdf..cda4b851edd 100644
 --- a/server/sock.c
 +++ b/server/sock.c
-@@ -173,6 +173,7 @@ static const struct object_ops sock_ops =
+@@ -189,6 +189,7 @@ static const struct object_ops sock_ops =
      remove_queue,                 /* remove_queue */
      sock_signaled,                /* signaled */
      NULL,                         /* get_esync_fd */
@@ -3363,7 +3418,7 @@ index c2dfa8fb8ce..080efc98942 100644
      no_satisfied,                 /* satisfied */
      no_signal,                    /* signal */
      sock_get_fd,                  /* get_fd */
-@@ -1175,6 +1176,7 @@ static const struct object_ops ifchange_ops =
+@@ -1529,6 +1530,7 @@ static const struct object_ops ifchange_ops =
      NULL,                    /* remove_queue */
      NULL,                    /* signaled */
      NULL,                    /* get_esync_fd */
@@ -3371,7 +3426,7 @@ index c2dfa8fb8ce..080efc98942 100644
      no_satisfied,            /* satisfied */
      no_signal,               /* signal */
      ifchange_get_fd,         /* get_fd */
-@@ -1396,6 +1398,7 @@ static const struct object_ops socket_device_ops =
+@@ -1750,6 +1752,7 @@ static const struct object_ops socket_device_ops =
      NULL,                       /* remove_queue */
      NULL,                       /* signaled */
      NULL,                       /* get_esync_fd */
@@ -3631,3 +3686,6 @@ index 1a031248a7c..388b116bc67 100644
      NULL,                         /* satisfied */
      no_signal,                    /* signal */
      no_get_fd,                    /* get_fd */
+-- 
+2.29.1
+
