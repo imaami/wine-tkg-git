@@ -16,11 +16,11 @@ lsteamclient entry points.
  6 files changed, 107 insertions(+)
 
 diff --git a/dlls/ntdll/loader.c b/dlls/ntdll/loader.c
-index 955bd186b56..fe9e9fd2315 100644
+index cfa07140d7f..ecceffb9bbf 100644
 --- a/dlls/ntdll/loader.c
 +++ b/dlls/ntdll/loader.c
-@@ -1913,10 +1913,14 @@ static NTSTATUS build_module( LPCWSTR load_path, const UNICODE_STRING *nt_name,
-                               const pe_image_info_t *image_info, const struct file_id *id,
+@@ -2027,10 +2027,14 @@ static NTSTATUS build_module( LPCWSTR load_path, const UNICODE_STRING *nt_name,
+                               const SECTION_IMAGE_INFORMATION *image_info, const struct file_id *id,
                                DWORD flags, WINE_MODREF **pwm )
  {
 +    static HMODULE lsteamclient = NULL;
@@ -34,9 +34,9 @@ index 955bd186b56..fe9e9fd2315 100644
  
      if (!(nt = RtlImageNtHeader( *module ))) return STATUS_INVALID_IMAGE_FORMAT;
  
-@@ -1932,6 +1936,24 @@ static NTSTATUS build_module( LPCWSTR load_path, const UNICODE_STRING *nt_name,
+@@ -2048,6 +2052,24 @@ static NTSTATUS build_module( LPCWSTR load_path, const UNICODE_STRING *nt_name,
  
-     set_security_cookie( *module, image_info->map_size );
+     set_security_cookie( *module, map_size );
  
 +    basename = nt_name->Buffer;
 +    if ((tmp = wcsrchr(basename, '\\'))) basename = tmp + 1;
@@ -60,10 +60,10 @@ index 955bd186b56..fe9e9fd2315 100644
  
      if (!(flags & DONT_RESOLVE_DLL_REFERENCES) &&
 diff --git a/dlls/ntdll/unix/loader.c b/dlls/ntdll/unix/loader.c
-index 0fe79ee499c..adaaa6acaf6 100644
+index d0d979248f8..f00b8c38ed1 100644
 --- a/dlls/ntdll/unix/loader.c
 +++ b/dlls/ntdll/unix/loader.c
-@@ -1385,6 +1385,71 @@ ULONG_PTR get_image_address(void)
+@@ -1485,6 +1485,71 @@ ULONG_PTR get_image_address(void)
  }
  
  
@@ -135,7 +135,7 @@ index 0fe79ee499c..adaaa6acaf6 100644
  /* math function wrappers */
  static double CDECL ntdll_atan( double d )  { return atan( d ); }
  static double CDECL ntdll_ceil( double d )  { return ceil( d ); }
-@@ -1470,6 +1535,7 @@ static struct unix_funcs unix_funcs =
+@@ -1548,6 +1613,7 @@ static struct unix_funcs unix_funcs =
      __wine_dbg_strdup,
      __wine_dbg_output,
      __wine_dbg_header,
@@ -144,10 +144,10 @@ index 0fe79ee499c..adaaa6acaf6 100644
  
  
 diff --git a/dlls/ntdll/unix/signal_i386.c b/dlls/ntdll/unix/signal_i386.c
-index 162a0b6a701..7a710f59f5e 100644
+index 02e164a0c2a..2e806aadda6 100644
 --- a/dlls/ntdll/unix/signal_i386.c
 +++ b/dlls/ntdll/unix/signal_i386.c
-@@ -1601,6 +1601,7 @@ static void segv_handler( int signal, siginfo_t *siginfo, void *sigcontext )
+@@ -1916,6 +1916,7 @@ static void segv_handler( int signal, siginfo_t *siginfo, void *sigcontext )
      struct xcontext xcontext;
      ucontext_t *ucontext = sigcontext;
      void *stack = setup_exception_record( sigcontext, &rec, &xcontext );
@@ -155,7 +155,7 @@ index 162a0b6a701..7a710f59f5e 100644
  
      switch (TRAP_sig(ucontext))
      {
-@@ -1635,6 +1636,12 @@ static void segv_handler( int signal, siginfo_t *siginfo, void *sigcontext )
+@@ -1950,6 +1951,12 @@ static void segv_handler( int signal, siginfo_t *siginfo, void *sigcontext )
          }
          break;
      case TRAP_x86_PAGEFLT:  /* Page fault */
@@ -169,10 +169,10 @@ index 162a0b6a701..7a710f59f5e 100644
          rec.ExceptionInformation[0] = (ERROR_sig(ucontext) >> 1) & 0x09;
          rec.ExceptionInformation[1] = (ULONG_PTR)siginfo->si_addr;
 diff --git a/dlls/ntdll/unix/signal_x86_64.c b/dlls/ntdll/unix/signal_x86_64.c
-index befdf9fbd4f..7bea7dd937c 100644
+index 1fe00c1bf57..6ee00d7faf1 100644
 --- a/dlls/ntdll/unix/signal_x86_64.c
 +++ b/dlls/ntdll/unix/signal_x86_64.c
-@@ -2168,6 +2168,7 @@ static void segv_handler( int signal, siginfo_t *siginfo, void *sigcontext )
+@@ -2477,6 +2477,7 @@ static void segv_handler( int signal, siginfo_t *siginfo, void *sigcontext )
      EXCEPTION_RECORD rec = { 0 };
      struct xcontext context;
      ucontext_t *ucontext = sigcontext;
@@ -180,7 +180,7 @@ index befdf9fbd4f..7bea7dd937c 100644
  
      rec.ExceptionAddress = (void *)RIP_sig(ucontext);
      save_context( &context, sigcontext );
-@@ -2199,6 +2200,12 @@ static void segv_handler( int signal, siginfo_t *siginfo, void *sigcontext )
+@@ -2508,6 +2509,12 @@ static void segv_handler( int signal, siginfo_t *siginfo, void *sigcontext )
          }
          break;
      case TRAP_x86_PAGEFLT:  /* Page fault */
@@ -194,10 +194,10 @@ index befdf9fbd4f..7bea7dd937c 100644
          rec.ExceptionInformation[0] = (ERROR_sig(ucontext) >> 1) & 0x09;
          rec.ExceptionInformation[1] = (ULONG_PTR)siginfo->si_addr;
 diff --git a/dlls/ntdll/unix/unix_private.h b/dlls/ntdll/unix/unix_private.h
-index 8d6ab030adb..a3a418cfaa5 100644
+index 4c0484f8df1..228f0b6b066 100644
 --- a/dlls/ntdll/unix/unix_private.h
 +++ b/dlls/ntdll/unix/unix_private.h
-@@ -188,6 +188,8 @@ extern NTSTATUS get_thread_context( HANDLE handle, context_t *context, unsigned
+@@ -177,6 +177,8 @@ extern NTSTATUS get_thread_context( HANDLE handle, context_t *context, unsigned
  extern NTSTATUS alloc_object_attributes( const OBJECT_ATTRIBUTES *attr, struct object_attributes **ret,
                                           data_size_t *ret_len ) DECLSPEC_HIDDEN;
  
@@ -207,10 +207,10 @@ index 8d6ab030adb..a3a418cfaa5 100644
  extern void *anon_mmap_alloc( size_t size, int prot ) DECLSPEC_HIDDEN;
  extern void virtual_init(void) DECLSPEC_HIDDEN;
 diff --git a/dlls/ntdll/unixlib.h b/dlls/ntdll/unixlib.h
-index 98f19346f77..ecd48427868 100644
+index 7ed3148e4c4..4e602ab37ce 100644
 --- a/dlls/ntdll/unixlib.h
 +++ b/dlls/ntdll/unixlib.h
-@@ -134,6 +134,9 @@ struct unix_funcs
+@@ -98,6 +98,9 @@ struct unix_funcs
      int           (CDECL *dbg_output)( const char *str );
      int           (CDECL *dbg_header)( enum __wine_debug_class cls, struct __wine_debug_channel *channel,
                                         const char *function );
