@@ -52,7 +52,7 @@ index db87d188236..81a63a20689 100644
  static char input_style[20];
  
  #define IS_OPTION_TRUE(ch) \
-From 1091eaf13692b16ed66328ceeebfc587075fec6c Mon Sep 17 00:00:00 2001
+From 0611dfce9e99452aac14581e3cef35faae0acb02 Mon Sep 17 00:00:00 2001
 From: Andrew Eikum <aeikum@codeweavers.com>
 Date: Thu, 25 Oct 2018 12:50:45 -0500
 Subject: [PATCH] HACK: wined3d: Fake an AMD card in place of Nvidia cards
@@ -65,12 +65,12 @@ hardware is actually an AMD card, so they don't try to load nvapi.
  1 file changed, 8 insertions(+)
 
 diff --git a/dlls/wined3d/adapter_gl.c b/dlls/wined3d/adapter_gl.c
-index b8a2060cf46..8259d92ebac 100644
+index cc78c9046b6..bf401812d8b 100644
 --- a/dlls/wined3d/adapter_gl.c
 +++ b/dlls/wined3d/adapter_gl.c
-@@ -1009,6 +1009,14 @@ static const struct wined3d_gpu_description *query_gpu_description(const struct
-         vendor = wined3d_settings.pci_vendor_id;
-         TRACE("Overriding vendor PCI ID with 0x%04x.\n", vendor);
+@@ -1025,6 +1025,14 @@ static const struct wined3d_gpu_description *query_gpu_description(const struct
+ 
+         gpu_description = wined3d_get_gpu_description(vendor, device);
      }
 +    else if(vendor == HW_VENDOR_NVIDIA)
 +    {
@@ -81,9 +81,8 @@ index b8a2060cf46..8259d92ebac 100644
 +        device = CARD_AMD_RADEON_RX_480;
 +    }
  
-     if (wined3d_settings.pci_device_id != PCI_DEVICE_NONE)
-     {
-
+     if ((gpu_description_override = wined3d_get_user_override_gpu_description(vendor, device)))
+         gpu_description = gpu_description_override;
 From aa7fa7ce94bd4e49e3843a8ea398d29882518e43 Mon Sep 17 00:00:00 2001
 From: Andrew Eikum <aeikum@codeweavers.com>
 Date: Mon, 6 Aug 2018 08:06:03 -0500
@@ -1082,23 +1081,21 @@ index e976fda77f2..212c88c5a02 100644
      case DWMWA_CLOAKED:
          if (size < sizeof(DWORD)) return E_INVALIDARG;
  
-From c099ae745b3a63edee1677a2da01cab5aa5b8562 Mon Sep 17 00:00:00 2001
+From 95758d733ea172dd84592f95894fd02964f94133 Mon Sep 17 00:00:00 2001
 From: Zebediah Figura <z.figura12@gmail.com>
 Date: Tue, 28 Jan 2020 14:30:43 -0600
 Subject: [PATCH] winegstreamer: HACK: Try harder to register winegstreamer
  filters.
 
-The IDL declarations should actually be unnecessary with the quartz part, but there's a chance that an application will try to create filters before it creates the graph.
 ---
- dlls/quartz/filtergraph.c     | 17 +++++++++++++++++
- dlls/winegstreamer/winegstreamer_classes.idl | 21 +++++++++++++++++++++
- 2 files changed, 38 insertions(+)
+ dlls/quartz/filtergraph.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
 diff --git a/dlls/quartz/filtergraph.c b/dlls/quartz/filtergraph.c
-index 1ed41bdcec5..0af6e1ded5f 100644
+index 22d7f7b4450..f7a6ef69bb0 100644
 --- a/dlls/quartz/filtergraph.c
 +++ b/dlls/quartz/filtergraph.c
-@@ -5681,11 +5681,28 @@ static const IUnknownVtbl IInner_VTable =
+@@ -5566,11 +5566,28 @@ static const IUnknownVtbl IInner_VTable =
      FilterGraphInner_Release
  };
  
@@ -1126,7 +1123,7 @@ index 1ed41bdcec5..0af6e1ded5f 100644
 +
      *out = NULL;
  
-     fimpl = CoTaskMemAlloc(sizeof(*fimpl));
+     if (!(object = calloc(1, sizeof(*object))))
 From aa6ab7464758508b3348b3ce390c1524c9ce32a2 Mon Sep 17 00:00:00 2001
 From: Andrew Eikum <aeikum@codeweavers.com>
 Date: Thu, 30 Jan 2020 10:16:19 -0600
@@ -1314,10 +1311,10 @@ This can be removed when the runtime ships gnutls >= 3.6
  1 file changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/dlls/bcrypt/gnutls.c b/dlls/bcrypt/gnutls.c
-index 868f898bbbb..95f498123ea 100644
+index 4505a8d965c..3b8c4c4d580 100644
 --- a/dlls/bcrypt/gnutls.c
 +++ b/dlls/bcrypt/gnutls.c
-@@ -267,8 +267,11 @@ BOOL gnutls_initialize(void)
+@@ -322,8 +322,11 @@ static BOOL gnutls_initialize(void)
      }
      if (!(pgnutls_decode_rs_value = dlsym( libgnutls_handle, "gnutls_decode_rs_value" )))
      {
@@ -1329,8 +1326,8 @@ index 868f898bbbb..95f498123ea 100644
 +            pgnutls_decode_rs_value = compat_gnutls_decode_rs_value;
 +        }
      }
- 
-     if (TRACE_ON( bcrypt ))
+     if (!(pgnutls_privkey_import_rsa_raw = dlsym( libgnutls_handle, "gnutls_privkey_import_rsa_raw" )))
+     {
 From 2f720e9aa8ded781ff457bdfab96f3651017299c Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?R=C3=A9mi=20Bernon?= <rbernon@codeweavers.com>
 Date: Tue, 21 Jan 2020 21:05:05 +0100
@@ -1858,20 +1855,20 @@ index 83c3f3734a7..006ab370844 100644
          {
              ERR("Failed to register d3d11 layers, returning %#x.\n", hr);
 
-From 5b00ca69a1927e1d0df4cf26160228e460568c51 Mon Sep 17 00:00:00 2001
+From 454e04e49ccb25d85301ebf46d5220185fe957aa Mon Sep 17 00:00:00 2001
 From: Paul Gofman <pgofman@codeweavers.com>
 Date: Tue, 9 Jun 2020 14:16:22 +0300
 Subject: [PATCH] kernelbase: HACK Add an option to blacklist files.
 
 ---
- dlls/kernelbase/file.c | 76 +++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 75 insertions(+), 1 deletion(-)
+ dlls/kernelbase/file.c | 76 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 76 insertions(+)
 
 diff --git a/dlls/kernelbase/file.c b/dlls/kernelbase/file.c
-index eb2ef57c7d6..c7881fe4516 100644
+index d9b34408692..a4b1e4e713f 100644
 --- a/dlls/kernelbase/file.c
 +++ b/dlls/kernelbase/file.c
-@@ -41,6 +41,8 @@
+@@ -43,6 +43,8 @@
  #include "wine/exception.h"
  #include "wine/debug.h"
  
@@ -1880,8 +1877,8 @@ index eb2ef57c7d6..c7881fe4516 100644
  WINE_DEFAULT_DEBUG_CHANNEL(file);
  
  /* info structure for FindFirstFile handle */
-@@ -432,6 +434,72 @@ HANDLE WINAPI DECLSPEC_HOTPATCH CreateFileA( LPCSTR name, DWORD access, DWORD sh
-     return CreateFileW( nameW, access, sharing, sa, creation, attributes, template );
+@@ -700,6 +702,73 @@ static UINT get_nt_file_options( DWORD attributes )
+     return options;
  }
  
 +#define MAX_BLACKLISTED_FILENAMES 32
@@ -1950,18 +1947,11 @@ index eb2ef57c7d6..c7881fe4516 100644
 +
 +    return FALSE;
 +}
- 
++
  /*************************************************************************
   *	CreateFileW   (kernelbase.@)
-@@ -460,7 +528,6 @@ HANDLE WINAPI DECLSPEC_HOTPATCH CreateFileW( LPCWSTR filename, DWORD access, DWO
-         FILE_OVERWRITE      /* TRUNCATE_EXISTING */
-     };
- 
--
-     /* sanity checks */
- 
-     if (!filename || !filename[0])
-@@ -479,6 +546,13 @@ HANDLE WINAPI DECLSPEC_HOTPATCH CreateFileW( LPCWSTR filename, DWORD access, DWO
+  */
+@@ -744,6 +813,13 @@ HANDLE WINAPI DECLSPEC_HOTPATCH CreateFileW( LPCWSTR filename, DWORD access, DWO
             (sharing & FILE_SHARE_DELETE) ? "FILE_SHARE_DELETE " : "",
             creation, attributes);
  
@@ -1975,7 +1965,6 @@ index eb2ef57c7d6..c7881fe4516 100644
      if (!wcsncmp( filename, L"\\\\.\\", 4 ))
      {
          if ((filename[4] && filename[5] == ':' && !filename[6]) ||
-
 From 2409bd1f74be116172688a25df725290637c255a Mon Sep 17 00:00:00 2001
 From: Andrew Eikum <aeikum@codeweavers.com>
 Date: Wed, 10 Jun 2020 16:18:29 -0500
