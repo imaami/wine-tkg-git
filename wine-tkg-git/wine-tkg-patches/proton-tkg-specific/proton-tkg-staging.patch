@@ -1359,7 +1359,7 @@ index a5235b69a8d..4b2c9bd41ae 100644
          /* forward request to the foreground window if it's in a different thread */
          tid = GetWindowThreadProcessId( foreground, &pid );
          if (tid && tid != GetCurrentThreadId() && pid == GetCurrentProcessId())
-From 8fd9d6bd3d567893f933b7d55615446476745654 Mon Sep 17 00:00:00 2001
+From 01d32ad0618f6f35af4faf1dc72c68225edacdc2 Mon Sep 17 00:00:00 2001
 From: Vincent Povirk <vincent@codeweavers.com>
 Date: Wed, 1 Apr 2020 11:47:05 -0500
 Subject: [PATCH] winebrowser: Restore original LD_LIBRARY_PATH before calling
@@ -1467,7 +1467,7 @@ index 4ca04198b6e..483e2b4138a 100644
      FAudioCOMConstructWithCustomAllocatorEXT(
          &object->faudio,
          XAUDIO2_VER,
-From b739d48093cce805b7b4f48fdbd9d0bb62bc8013 Mon Sep 17 00:00:00 2001
+From d0abdd15d621c86cdc022f52f1a20aef371e8655 Mon Sep 17 00:00:00 2001
 From: Brendan Shanks <bshanks@codeweavers.com>
 Date: Mon, 13 Apr 2020 16:25:47 -0700
 Subject: [PATCH] HACK: dxgi: Swap around memory sizes for GTA IV
@@ -1482,10 +1482,10 @@ Swap the memory values around so this works.
  1 file changed, 19 insertions(+)
 
 diff --git a/dlls/dxgi/adapter.c b/dlls/dxgi/adapter.c
-index 5a97590dbce..a5563498cdd 100644
+index d864318a0ed..20f728bdd04 100644
 --- a/dlls/dxgi/adapter.c
 +++ b/dlls/dxgi/adapter.c
-@@ -200,6 +200,25 @@ static HRESULT dxgi_adapter_get_desc(struct dxgi_adapter *adapter, DXGI_ADAPTER_
+@@ -204,6 +204,25 @@ skip_description:
      desc->GraphicsPreemptionGranularity = 0; /* FIXME */
      desc->ComputePreemptionGranularity = 0; /* FIXME */
  
