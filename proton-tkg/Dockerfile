@@ -14,7 +14,27 @@ ENV LANG en_US.UTF-8
 RUN set -ex; \
 	apt-get -y update; \
 	apt-get -y upgrade; \
-	apt-get -y --no-install-recommends install libc6-dev linux-libc-dev libnss3-dev libreadline-dev ca-certificates patch git wget \
+	apt-get -y --no-install-recommends install git; \
+	git config --global user.name i; \
+	git config --global user.email i@i; \
+	git config --global pull.ff only; \
+	git config --global alias.aliases "config --get-regex 'alias*'"; \
+	git config --global alias.br "branch -avv --color"; \
+	git config --global alias.idiff "diff -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color"; \
+	git config --global alias.ilog "log -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color"; \
+	git config --global alias.ishow "show -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color"; \
+	git config --global alias.iwdiff "diff -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color --word-diff=color"; \
+	git config --global alias.iwlog "log -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color --word-diff=color"; \
+	git config --global alias.iwshow "show -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color --word-diff=color"; \
+	git config --global alias.wdiff "diff --word-diff=color"; \
+	git config --global alias.wlog "log --word-diff=color"; \
+	git config --global alias.wshow "show --word-diff=color"; \
+	rm -rf /var/lib/apt/lists/*
+
+RUN set -ex; \
+	apt-get -y update; \
+	apt-get -y upgrade; \
+	apt-get -y --no-install-recommends install libc6-dev linux-libc-dev libnss3-dev libreadline-dev ca-certificates patch wget \
 	        gnupg less fakeroot build-essential nano autoconf bison debhelper desktop-file-utils docbook-to-man docbook-utils \
 	        docbook-xsl flex fontforge gawk gettext libacl1-dev libasound2-dev libcapi20-dev libcups2-dev libdbus-1-dev \
 	        libgif-dev libglu1-mesa-dev libgphoto2-dev libgsm1-dev libgtk-3-dev libkrb5-dev liblcms2-dev libldap2-dev \
@@ -30,18 +50,6 @@ RUN set -ex; \
 	update-alternatives --set i686-w64-mingw32-gcc /usr/bin/i686-w64-mingw32-gcc-posix; \
 	update-alternatives --set i686-w64-mingw32-g++ /usr/bin/i686-w64-mingw32-g++-posix; \
 	sed -Ei 's/^#[[:blank:]]*(.+history-search-.+)$/\1/' /etc/inputrc; \
-	git config --global pull.ff only; \
-	git config --global alias.aliases "config --get-regex 'alias*'"; \
-	git config --global alias.br "branch -avv --color"; \
-	git config --global alias.idiff "diff -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color"; \
-	git config --global alias.ilog "log -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color"; \
-	git config --global alias.ishow "show -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color"; \
-	git config --global alias.iwdiff "diff -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color --word-diff=color"; \
-	git config --global alias.iwlog "log -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color --word-diff=color"; \
-	git config --global alias.iwshow "show -w -b --ignore-blank-lines --ignore-cr-at-eol --ignore-space-at-eol --color --word-diff=color"; \
-	git config --global alias.wdiff "diff --word-diff=color"; \
-	git config --global alias.wlog "log --word-diff=color"; \
-	git config --global alias.wshow "show --word-diff=color"; \
 	rm -rf /var/lib/apt/lists/*
 
 RUN set -ex; \
